@@ -1,0 +1,125 @@
+/* Sleek, Classic styling for Clerk components */
+.cl-rootBox {
+  width: 100%;
+  font-family: var(--font-primary) !important;
+}
+
+.cl-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  border-radius: var(--radius-lg) !important;
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--bg-border) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25) !important;
+  padding: 2rem 1.75rem !important;
+  transition: border-color 0.4s ease !important;
+  margin: 0 auto !important;
+}
+
+.cl-headerTitle {
+  font-family: var(--font-heading) !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  font-size: 1.5rem !important;
+}
+
+.cl-headerSubtitle {
+  color: var(--text-secondary) !important;
+  font-family: var(--font-primary) !important;
+}
+
+/* Primary Button Override */
+.cl-button-primary, .cl-formButtonPrimary {
+  background: var(--text-primary) !important;
+  color: var(--bg-dark) !important;
+  font-weight: 600 !important;
+  border-radius: var(--button-radius) !important;
+  padding: 12px 16px !important;
+  transition: all 0.3s ease !important;
+  font-family: var(--font-primary) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.cl-button-primary:hover, .cl-formButtonPrimary:hover {
+  background: #d4d4d4 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Input Fields */
+.cl-formFieldInput {
+  border-radius: var(--radius-md) !important;
+  padding: 12px 16px !important;
+  border: 1px solid var(--bg-border) !important;
+  background: var(--bg-dark) !important;
+  color: var(--text-primary) !important;
+  transition: all 0.2s ease !important;
+  font-family: var(--font-primary) !important;
+}
+
+.cl-formFieldInput:focus {
+  border-color: var(--text-secondary) !important;
+  box-shadow: 0 0 0 1px var(--text-secondary) !important;
+  outline: none !important;
+}
+
+/* Labels and text */
+.cl-formFieldLabel {
+  color: var(--text-secondary) !important;
+  font-family: var(--font-primary) !important;
+  font-weight: 500 !important;
+}
+
+.cl-footerActionLink {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+  transition: color 0.2s ease !important;
+}
+
+.cl-footerActionLink:hover {
+  color: var(--text-secondary) !important;
+  text-decoration: underline !important;
+}
+
+.cl-footerActionText {
+  color: var(--text-muted) !important;
+}
+
+.cl-dividerLine {
+  background: var(--bg-border) !important;
+}
+
+.cl-dividerText {
+  color: var(--text-muted) !important;
+}
+
+.cl-socialButtonsBlockButton {
+  border: 1px solid var(--bg-border) !important;
+  background: var(--bg-dark) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-md) !important;
+  transition: all 0.2s ease !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  background: var(--bg-border) !important;
+}
+
+.cl-internal-b3al4t { /* internal text elements occasionally */
+  color: var(--text-secondary) !important;
+}
+
+.auth-card-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
