@@ -2682,7 +2682,7 @@ export default function Meet() {
 					</IconButton>
 				</Tooltip>
 				
-				{/* <ScreenShareButton
+				<ScreenShareButton
 					onScreenShare={handleScreenShare}
 					onStopScreenShare={handleStopScreenShare}
 					socketRef={socketRef}
@@ -2692,7 +2692,7 @@ export default function Meet() {
 					isScreenSharing={isScreenSharing}
 					setIsScreenSharing={setIsScreenSharing}
 					activeScreenSharingUser={activeScreenSharingUser}
-				/> */}
+				/>
 				
 				<Tooltip title="Leave meeting">
 					<IconButton 
