@@ -597,8 +597,8 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         }
 
         mergeLiveRows(payload.transcripts || []);
-      } catch (error) {
-        console.warn('Live transcript polling failed:', error?.message || error);
+      } catch {
+        // Ignore transient polling failures to avoid user-visible console noise.
       }
     };
 
@@ -666,8 +666,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         if (!persistedViaBackend) {
           await persistTranscriptDirectlyToSupabase(item);
         }
-      } catch (error) {
-        console.error('Failed to persist transcript line:', error);
+      } catch {
         await persistTranscriptDirectlyToSupabase(item);
       }
     });
@@ -692,8 +691,8 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
                 statusPayload.aiConfigured ?? statusPayload.openaiConfigured
               );
             }
-          } catch (statusError) {
-            console.warn('Could not check backend AI capability:', statusError);
+          } catch {
+            // Ignore backend status check failures and continue with local analysis.
           }
         }
 
@@ -738,7 +737,6 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
           }
         });
       } catch (error) {
-        console.error('AI insight fetch failed:', error);
         if (!insightApiUnavailableRef.current && /Insight API failed: 5\d\d/i.test(error.message || '')) {
           insightApiUnavailableRef.current = true;
           onError?.('AI insights backend is unavailable right now. Local analysis will continue.', 'warning');
@@ -781,8 +779,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
       });
 
       if (!response.ok) {
-        // Only log error, don't throw to prevent breaking transcription
-        console.warn('Whisper API not available:', response.status);
+        // Keep browser transcription running silently when Whisper backend is unavailable.
         return;
       }
 
@@ -808,13 +805,8 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         return [...prev, whisperTranscript];
       });
     } catch (error) {
-      // Improved error handling - don't spam console
-      if (error.name === 'AbortError') {
-        console.log('Whisper request timed out');
-      } else if (!whisperNetworkWarnedRef.current) {
-        console.error('Whisper chunk upload failed:', error);
+      if (error.name !== 'AbortError' && !whisperNetworkWarnedRef.current) {
         whisperNetworkWarnedRef.current = true;
-        onError?.('Whisper transcription service is unavailable. Browser transcription will continue.', 'warning');
       }
     }
   };
