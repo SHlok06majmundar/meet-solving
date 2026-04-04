@@ -2765,11 +2765,11 @@ export default function Meet() {
 				</IconButton>
 				</Tooltip>
 				
-				{/* <RecordingButton 
+				<RecordingButton 
 					localStream={streamRef.current} 
 					peerRefs={peersRef}
 					onError={(message) => showError(message, 'error')}
-				/> */}
+				/>
 
 				<TranscriptionButton 
 					localUserId={socketRef.current?.id || ''}
