@@ -2171,7 +2171,7 @@ export default function Meet() {
 
 	const participantCount = peers.length + 1;
 	const getVideoWidth = () => {
-		if (participantCount === 1) return { xs: '100%', sm: '80%', md: '70%', lg: '60%', xl: '50%' }; // Single user identical to current
+		if (participantCount === 1) return { xs: '100%', sm: '74%', md: '62%', lg: '52%', xl: '44%' }; // Single user should feel balanced, not oversized
 		if (participantCount === 2) return { xs: '100%', sm: '48%' }; // Two users split perfectly side by side
 		if (participantCount <= 4) return { xs: '100%', sm: '48%', lg: '46%' }; // 2x2 grid
 		if (participantCount <= 9) return { xs: '100%', sm: '48%', md: '31%' }; // 3x3 grid
@@ -2179,6 +2179,7 @@ export default function Meet() {
 		return { xs: '100%', sm: '31%', md: '23%', lg: '18%' }; // 5x5+ grid
 	};
 	const dynamicWidth = getVideoWidth();
+	const videoCardMaxWidth = participantCount === 1 ? 860 : 980;
 
 	return (
 		<Box 
@@ -2376,31 +2377,34 @@ export default function Meet() {
 				flex: 1, 
 				display: 'flex', 
 				flexWrap: 'wrap', 
-				gap: { xs: 2, md: 4 }, 
-				p: { xs: 2, sm: 4, md: 6 }, 
+				gap: { xs: 1.5, md: 2.5 }, 
+				p: { xs: 1.5, sm: 2.5, md: 3.5 }, 
 				alignItems: 'center', 
 				justifyContent: 'center', 
 				bgcolor: 'transparent',
                 position: 'relative',
                 zIndex: 1,
-				overflowY: 'auto'
+				overflowY: 'auto',
+				maxWidth: '1520px',
+				mx: 'auto',
+				width: '100%'
 			}}>
 				<Paper elevation={0} sx={{ 
-					p: { xs: 1, sm: 1.5 }, 
+					p: { xs: 0.75, sm: 1 }, 
 					backgroundColor: 'var(--bg-elevated)', 
-					borderRadius: 'var(--card-radius)',
+					borderRadius: '18px',
 					border: '1px solid var(--bg-border)',
-					boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+					boxShadow: '0 8px 24px rgba(10, 20, 40, 0.2)',
 					backdropFilter: 'blur(12px)',
 					transition: 'all 0.3s ease',
 					'&:hover': {
 						borderColor: 'var(--text-muted)',
-						boxShadow: '0 10px 40px var(--accent-glow)',
+						boxShadow: '0 12px 28px rgba(10, 20, 40, 0.28)',
 					},
 					position: 'relative',
 					overflow: 'hidden',
 					width: dynamicWidth,
-					maxWidth: '1200px',
+					maxWidth: `${videoCardMaxWidth}px`,
 					display: 'flex',
 					flexDirection: 'column'
 				}}>
@@ -2500,21 +2504,21 @@ export default function Meet() {
 						className={`peer-video-container${peer.isScreenSharing ? ' screen-sharing' : ''}`} 
 						elevation={0} 
 						sx={{ 
-						p: { xs: 1, sm: 1.5 }, 
+						p: { xs: 0.75, sm: 1 }, 
 						backgroundColor: 'var(--bg-elevated)', 
-						borderRadius: 'var(--card-radius)',
+						borderRadius: '18px',
 						border: '1px solid var(--bg-border)',
-						boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+						boxShadow: '0 8px 24px rgba(10, 20, 40, 0.2)',
 						backdropFilter: 'blur(12px)',
 						transition: 'all 0.3s ease',
 						'&:hover': {
 							borderColor: 'var(--text-muted)',
-							boxShadow: '0 10px 40px var(--accent-glow)',
+							boxShadow: '0 12px 28px rgba(10, 20, 40, 0.28)',
 						},
 						position: 'relative',
 						overflow: 'hidden',
 						width: dynamicWidth,
-						maxWidth: '1200px',
+						maxWidth: `${videoCardMaxWidth}px`,
 						display: 'flex',
 						flexDirection: 'column'
 					}}>
@@ -2614,10 +2618,10 @@ export default function Meet() {
 			{/* Controls */}
 			<Box sx={{
 				position: 'fixed',
-				bottom: { xs: 10, sm: 18 },
+				bottom: { xs: 8, sm: 14 },
 				left: 0,
 				right: 0,
-				p: { xs: 1.5, sm: 2 },
+				p: { xs: 1, sm: 1.25 },
 				pointerEvents: 'none',
 				display: 'flex',
 				justifyContent: 'center',
@@ -2627,12 +2631,12 @@ export default function Meet() {
 					display: 'flex', 
 					justifyContent: 'center', 
 					alignItems: 'center',
-					gap: { xs: 0.8, sm: 1.25 }, 
-					p: { xs: 1, sm: 1.1 }, 
+					gap: { xs: 0.65, sm: 0.9 }, 
+					p: { xs: 0.8, sm: 0.9 }, 
 					backgroundColor: 'var(--bg-elevated)',
 					borderRadius: '999px',
 					border: '1px solid var(--bg-border)',
-					boxShadow: '0 18px 40px rgba(0,0,0,0.28)',
+					boxShadow: '0 12px 30px rgba(10, 20, 40, 0.28)',
 					backdropFilter: 'blur(16px)',
 					WebkitBackdropFilter: 'blur(16px)',
 					pointerEvents: 'auto',
@@ -2648,8 +2652,8 @@ export default function Meet() {
 							bgcolor: micOn ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.14)', 
 							color: micOn ? 'var(--color-success)' : 'var(--color-error)', 
 							borderRadius: '50%',
-							width: { xs: 42, sm: 48 },
-							height: { xs: 42, sm: 48 },
+							width: { xs: 40, sm: 44 },
+							height: { xs: 40, sm: 44 },
 							border: '1px solid var(--bg-border)',
 							transition: 'all 0.2s ease',
 							'&:hover': {
@@ -2668,8 +2672,8 @@ export default function Meet() {
 							bgcolor: videoOn ? 'rgba(37, 99, 235, 0.14)' : 'rgba(217, 119, 6, 0.14)', 
 							color: videoOn ? 'var(--color-secondary)' : 'var(--color-warning)', 
 							borderRadius: '50%',
-							width: { xs: 42, sm: 48 },
-							height: { xs: 42, sm: 48 },
+							width: { xs: 40, sm: 44 },
+							height: { xs: 40, sm: 44 },
 							border: '1px solid var(--bg-border)',
 							transition: 'all 0.2s ease',
 							'&:hover': {
@@ -2701,8 +2705,8 @@ export default function Meet() {
 							bgcolor: 'rgba(220, 38, 38, 0.14)', 
 							color: 'var(--color-error)', 
 							borderRadius: '50%',
-							width: { xs: 42, sm: 48 },
-							height: { xs: 42, sm: 48 },
+							width: { xs: 40, sm: 44 },
+							height: { xs: 40, sm: 44 },
 							border: '1px solid var(--bg-border)',
 							transition: 'all 0.2s ease',
 							'&:hover': {
@@ -2729,8 +2733,8 @@ export default function Meet() {
 							bgcolor: chatOpen ? 'rgba(37, 99, 235, 0.14)' : (unreadMessages > 0 ? 'rgba(220, 38, 38, 0.14)' : 'var(--surface-soft)'), 
 							color: chatOpen ? 'var(--color-primary)' : (unreadMessages > 0 ? 'var(--color-error)' : 'var(--text-secondary)'), 
 							borderRadius: '50%',
-							width: { xs: 42, sm: 48 },
-							height: { xs: 42, sm: 48 },
+							width: { xs: 40, sm: 44 },
+							height: { xs: 40, sm: 44 },
 							border: '1px solid var(--bg-border)',
 							transition: 'all 0.2s ease',
 							position: 'relative',
