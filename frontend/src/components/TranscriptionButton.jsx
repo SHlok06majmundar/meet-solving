@@ -935,7 +935,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
       }
       
       // Get blob from service
-      const blobResult = transcriptionServiceRef.current.exportTranscripts(format);
+      const blobResult = transcriptionServiceRef.current.exportTranscripts(format, transcripts);
       
       // Handle async (Promise) or sync (Blob) result
       const blob = blobResult instanceof Promise ? await blobResult : blobResult;

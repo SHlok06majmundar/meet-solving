@@ -727,37 +727,53 @@ class TranscriptionService {
     }
   }
   
+  getExportSource(transcriptsOverride = null) {
+    const source = Array.isArray(transcriptsOverride)
+      ? transcriptsOverride
+      : this.transcripts;
+
+    return source
+      .filter(item => item && typeof item.text === 'string' && item.text.trim())
+      .map(item => ({
+        ...item,
+        speakerName: item.speakerName || 'Unknown',
+        startTime: item.startTime || item.createdAt || new Date().toISOString(),
+      }))
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  }
+
   /**
    * Export transcripts to a file
    * @param {string} format - Export format (txt, json, pdf)
+   * @param {Array|null} transcriptsOverride - Optional transcript list to export
    * @returns {Blob|Promise<Blob>} Blob containing the exported data
    */
-  exportTranscripts(format = 'txt') {
-    if (this.transcripts.length === 0) return null;
+  exportTranscripts(format = 'txt', transcriptsOverride = null) {
+    const exportSource = this.getExportSource(transcriptsOverride);
+    if (exportSource.length === 0) return null;
     
     if (format === 'json') {
-      const jsonData = JSON.stringify(this.transcripts, null, 2);
+      const jsonData = JSON.stringify(exportSource, null, 2);
       return new Blob([jsonData], { type: 'application/json' });
     } else if (format === 'pdf') {
       // Return a promise for PDF generation since it might be async with jsPDF
-      return this.generatePDF();
+      return this.generatePDF(exportSource);
     } else {
       // Default to text format
       let textContent = 'Meeting Transcription\n';
       textContent += '====================\n\n';
       
       // Group transcripts by date
-      const transcriptsByDate = this.groupTranscriptsByDate();
+      const transcriptsByDate = this.groupTranscriptsByDate(exportSource);
       
       Object.entries(transcriptsByDate).forEach(([date, dailyTranscripts]) => {
         textContent += `${date}\n`;
         textContent += '-'.repeat(date.length) + '\n\n';
         
         dailyTranscripts.forEach(transcript => {
-          if (transcript.isFinal) {
-            const time = new Date(transcript.startTime).toLocaleTimeString();
-            textContent += `[${time}] ${transcript.speakerName}: ${transcript.text}\n`;
-          }
+          const time = new Date(transcript.startTime).toLocaleTimeString();
+          const status = transcript.isFinal ? 'final' : 'interim';
+          textContent += `[${time}] (${status}) ${transcript.speakerName}: ${transcript.text}\n`;
         });
         textContent += '\n';
       });
@@ -768,9 +784,13 @@ class TranscriptionService {
   
   /**
    * Generate a PDF document from transcripts
+   * @param {Array|null} transcriptsOverride - Optional transcript list to render
    * @returns {Promise<Blob>} Promise resolving to PDF blob
    */
-  async generatePDF() {
+  async generatePDF(transcriptsOverride = null) {
+    const exportSource = this.getExportSource(transcriptsOverride);
+    if (exportSource.length === 0) return null;
+
     // Check if we need to load libraries
     if (typeof window.jspdf === 'undefined' || typeof window.html2canvas === 'undefined') {
       // Load PDF libraries dynamically
@@ -779,7 +799,7 @@ class TranscriptionService {
       } catch (err) {
         console.error('Failed to load PDF generation libraries', err);
         // Fall back to text export if PDF generation fails
-        return this.exportTranscripts('txt');
+        return this.exportTranscripts('txt', exportSource);
       }
     }
     
@@ -808,7 +828,7 @@ class TranscriptionService {
         const contentEl = tempEl.querySelector('#transcription-content');
         
         // Group transcripts by date for better organization
-        const transcriptsByDate = this.groupTranscriptsByDate();
+        const transcriptsByDate = this.groupTranscriptsByDate(exportSource);
         
         Object.entries(transcriptsByDate).forEach(([date, dailyTranscripts]) => {
           const dateDiv = document.createElement('div');
@@ -823,23 +843,21 @@ class TranscriptionService {
           transcriptsUl.style.padding = '0';
           
           dailyTranscripts.forEach(transcript => {
-            if (transcript.isFinal) {
-              const time = new Date(transcript.startTime).toLocaleTimeString();
-              const li = document.createElement('li');
-              li.style.marginBottom = '10px';
-              li.style.paddingLeft = '10px';
-              li.style.borderLeft = '3px solid #e1bee7';
-              
-              li.innerHTML = `
-                <p style="margin: 0;">
-                  <strong style="color: #512da8;">${transcript.speakerName}</strong>
-                  <span style="color: #9e9e9e; font-size: 0.8em;"> - ${time}</span>
-                </p>
-                <p style="margin: 5px 0 0 0; color: #424242;">${transcript.text}</p>
-              `;
-              
-              transcriptsUl.appendChild(li);
-            }
+            const time = new Date(transcript.startTime).toLocaleTimeString();
+            const li = document.createElement('li');
+            li.style.marginBottom = '10px';
+            li.style.paddingLeft = '10px';
+            li.style.borderLeft = transcript.isFinal ? '3px solid #e1bee7' : '3px solid #bbdefb';
+            
+            li.innerHTML = `
+              <p style="margin: 0;">
+                <strong style="color: #512da8;">${transcript.speakerName}</strong>
+                <span style="color: #9e9e9e; font-size: 0.8em;"> - ${time} (${transcript.isFinal ? 'final' : 'interim'})</span>
+              </p>
+              <p style="margin: 5px 0 0 0; color: #424242;">${transcript.text}</p>
+            `;
+            
+            transcriptsUl.appendChild(li);
           });
           
           dateDiv.appendChild(transcriptsUl);
@@ -901,12 +919,12 @@ class TranscriptionService {
         }).catch(err => {
           console.error('Error in html2canvas:', err);
           // Fall back to text export
-          resolve(this.exportTranscripts('txt'));
+          resolve(this.exportTranscripts('txt', exportSource));
         });
       } catch (err) {
         console.error('Error generating PDF', err);
         // Fall back to text export
-        resolve(this.exportTranscripts('txt'));
+        resolve(this.exportTranscripts('txt', exportSource));
       }
     });
   }
@@ -1068,24 +1086,23 @@ class TranscriptionService {
    * Group transcripts by date for better organization
    * @returns {Object} Map of dates to transcript arrays
    */
-  groupTranscriptsByDate() {
+  groupTranscriptsByDate(transcriptsOverride = null) {
     const transcriptsByDate = {};
+    const exportSource = this.getExportSource(transcriptsOverride);
     
-    this.transcripts.forEach(transcript => {
-      if (transcript.isFinal) {
-        const date = new Date(transcript.startTime).toLocaleDateString(undefined, {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-        
-        if (!transcriptsByDate[date]) {
-          transcriptsByDate[date] = [];
-        }
-        
-        transcriptsByDate[date].push(transcript);
+    exportSource.forEach(transcript => {
+      const date = new Date(transcript.startTime).toLocaleDateString(undefined, {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      if (!transcriptsByDate[date]) {
+        transcriptsByDate[date] = [];
       }
+
+      transcriptsByDate[date].push(transcript);
     });
     
     return transcriptsByDate;
