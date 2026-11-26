@@ -66,6 +66,17 @@ Required backend production settings:
 
 For relay connectivity, configure both `TURN_URLS` (comma-separated `turn:` or `turns:` endpoints) and `TURN_SHARED_SECRET` (at least 32 characters, matching coturn's `static-auth-secret` with `use-auth-secret` enabled). Omitting both allows direct connections and logs a startup warning; `/api/status` reports `turnConfigured: false`. A partial or malformed relay configuration still fails startup.
 
+Alternatively, use a Metered/Open Relay account. Create a free account through [Open Relay](https://www.metered.ca/tools/openrelay/), check the allowance shown in its dashboard, and set these two variables on the Render **backend**:
+
+| Variable | Value |
+| --- | --- |
+| `METERED_TURN_DOMAIN` | Your account hostname, such as `yourapp.metered.live`, without `https://` or a path |
+| `METERED_TURN_API_KEY` | The TURN credentials API key from that account |
+
+Leave `TURN_URLS` and `TURN_SHARED_SECRET` unset when using Metered. The authenticated backend fetches ICE credentials with a five-second timeout and a short cache, while the account API key remains on the backend. Provider errors are redacted. The browser receives only the ICE servers and relay credentials it needs; the response is not cacheable by browsers or CDNs. The old shared `openrelayproject` credentials are not used.
+
+After saving the variables, track the Render deployment to `live`, check `/api/status` for `turnConfigured: true`, then verify an actual relay-only connection and two devices on different networks. Configuration presence alone does not prove that a relay can carry traffic. TURN account creation and any billing settings are managed by the account owner.
+
 Set `TRUST_PROXY_HOPS` to the exact trusted reverse-proxy hop count (for example, 1 behind one proxy). Leave 0 for direct access. Terminate HTTPS at the hosting proxy, or supply both `SSL_KEY_PATH` and `SSL_CERT_PATH`; unreadable explicit certificates fail closed.
 
 TURN credentials last one hour. The shared secret stays on the backend. Without TURN, calls use STUN only and can fail on restrictive networks. Configure and test a relay before relying on the app across restrictive networks.

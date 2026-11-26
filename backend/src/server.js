@@ -11,7 +11,7 @@ const { registerSocketHandlers, startInactiveUserCleanup } = require('./socket/r
 
 console.log(`Starting server in ${NODE_ENV} mode on port ${PORT}`);
 console.log(`Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
-if (!process.env.TURN_URLS?.trim()) {
+if (!require('./services/iceService').isTurnConfigured()) {
   console.warn('TURN relay is not configured. Calls use direct connections; restrictive networks may not connect.');
 }
 

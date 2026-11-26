@@ -15,6 +15,10 @@ const asUser = (method, path, identity = auth) => request(app)[method](path).set
 test('public health works; private endpoints reject missing or forged sessions', async () => {
   await request(app).get('/api/status').expect(200);
   await request(app).get('/api/ready').expect(200);
+  await request(app).get('/api/ice-servers').expect(401);
+  const ice = await asUser('get', '/api/ice-servers').expect(200);
+  assert.equal(ice.headers['cache-control'], 'no-store');
+  assert.ok(Array.isArray(ice.body.iceServers));
   for (const path of ['/api/generate-meeting-id', '/api/stream-token', `/api/meetings/${randomUUID()}/transcripts`]) {
     await request(app).get(path).expect(401);
     await asUser('get', path, 'forged.token.value').expect(401);
