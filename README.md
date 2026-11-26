@@ -63,12 +63,12 @@ Required backend production settings:
 | `CLERK_ISSUER_URL` | Exact expected token issuer |
 | `SUPABASE_URL` | Database project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Backend-only database secret |
-| `TURN_URLS` | Comma-separated `turn:` or `turns:` relay endpoints |
-| `TURN_SHARED_SECRET` | At least 32 characters; must match coturn's `static-auth-secret` with `use-auth-secret` enabled |
+
+For relay connectivity, configure both `TURN_URLS` (comma-separated `turn:` or `turns:` endpoints) and `TURN_SHARED_SECRET` (at least 32 characters, matching coturn's `static-auth-secret` with `use-auth-secret` enabled). Omitting both allows direct connections and logs a startup warning; `/api/status` reports `turnConfigured: false`. A partial or malformed relay configuration still fails startup.
 
 Set `TRUST_PROXY_HOPS` to the exact trusted reverse-proxy hop count (for example, 1 behind one proxy). Leave 0 for direct access. Terminate HTTPS at the hosting proxy, or supply both `SSL_KEY_PATH` and `SSL_CERT_PATH`; unreadable explicit certificates fail closed.
 
-TURN credentials last one hour. The shared secret stays on the backend. Development without TURN uses STUN only and can fail on restrictive networks. Configure a relay before production.
+TURN credentials last one hour. The shared secret stays on the backend. Without TURN, calls use STUN only and can fail on restrictive networks. Configure and test a relay before relying on the app across restrictive networks.
 
 ## AI and transcription
 

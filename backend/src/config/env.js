@@ -28,13 +28,18 @@ if (ALLOWED_ORIGINS.some(origin => origin.includes('*') || new URL(origin).origi
 }
 function validateProductionConfig() {
   if (NODE_ENV !== 'production') return;
-  const required = ['ALLOWED_ORIGINS', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'CLERK_ISSUER_URL', 'TURN_URLS', 'TURN_SHARED_SECRET'];
+  const required = ['ALLOWED_ORIGINS', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'CLERK_ISSUER_URL'];
   if (!process.env.CLERK_SECRET_KEY && !process.env.CLERK_JWT_KEY) required.push('CLERK_SECRET_KEY');
   const missing = required.filter(key => !process.env[key]);
   if (missing.length) throw new Error(`Missing production configuration: ${missing.join(', ')}`);
   if (ALLOWED_ORIGINS.some(origin => !origin.startsWith('https://'))) throw new Error('Production origins must use HTTPS');
-  if (process.env.TURN_SHARED_SECRET.length < 32) throw new Error('TURN_SHARED_SECRET must contain at least 32 characters');
-  if (process.env.TURN_URLS.split(',').some(url => !/^turns?:/.test(url.trim()))) throw new Error('TURN_URLS must contain turn: or turns: URLs');
+  const turnUrls = process.env.TURN_URLS?.trim();
+  const turnSecret = process.env.TURN_SHARED_SECRET;
+  if (turnUrls || turnSecret) {
+    if (!turnUrls || !turnSecret) throw new Error('Configure both TURN_URLS and TURN_SHARED_SECRET, or omit both for direct connections');
+    if (turnSecret.length < 32) throw new Error('TURN_SHARED_SECRET must contain at least 32 characters');
+    if (turnUrls.split(',').some(url => !/^turns?:/.test(url.trim()))) throw new Error('TURN_URLS must contain turn: or turns: URLs');
+  }
 }
 
 module.exports = {

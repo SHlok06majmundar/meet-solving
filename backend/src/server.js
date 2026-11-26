@@ -11,6 +11,9 @@ const { registerSocketHandlers, startInactiveUserCleanup } = require('./socket/r
 
 console.log(`Starting server in ${NODE_ENV} mode on port ${PORT}`);
 console.log(`Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
+if (!process.env.TURN_URLS?.trim()) {
+  console.warn('TURN relay is not configured. Calls use direct connections; restrictive networks may not connect.');
+}
 
 let server;
 if (NODE_ENV === 'production' && process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH) {
