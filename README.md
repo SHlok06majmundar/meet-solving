@@ -40,6 +40,8 @@ Row-level security is enabled and browser roles have no table privileges. The ba
 
 The transcript primary key becomes `(meeting_id, user_id, transcript_id)`. Keyset pagination handles equal timestamps without skipping chunks. Database failures return an error rather than claiming a temporary in-memory copy is durable.
 
+Legacy installs with identity keys are supported. Repeated or missing transcript IDs receive new legacy IDs while every transcript row is retained. The retired `meeting_chat` table remains private with its history preserved. Existing insights tables gain a unique meeting index for explicit upserts. Legacy profile triggers have a fixed search path and cannot be called by browser roles.
+
 ## Production rollout
 
 Coordinate the frontend, backend, and database cutover: the previous frontend's direct database writes stop working after browser privileges are revoked. Validate in staging, then use a short maintenance window.

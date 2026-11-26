@@ -173,6 +173,10 @@ GRANT EXECUTE ON FUNCTION read_meeting_transcripts(TEXT, TIMESTAMPTZ, TEXT, TEXT
 DO $$
 DECLARE legacy_sequence TEXT;
 BEGIN
+  IF to_regprocedure('public.handle_new_user()') IS NOT NULL THEN
+    ALTER FUNCTION public.handle_new_user() SET search_path = pg_catalog, public;
+    REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+  END IF;
   IF to_regclass('public.meeting_chat') IS NOT NULL THEN
     ALTER TABLE public.meeting_chat ENABLE ROW LEVEL SECURITY;
     REVOKE ALL ON public.meeting_chat FROM PUBLIC, anon, authenticated;

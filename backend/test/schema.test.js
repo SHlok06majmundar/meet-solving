@@ -61,7 +61,9 @@ test('schema preserves repeated identity-key transcripts and supports legacy ins
     );
     CREATE TABLE meeting_chat (id BIGINT PRIMARY KEY, question TEXT);
     INSERT INTO meeting_chat VALUES (1, 'Retain history');
-    GRANT ALL ON meeting_chat TO anon, authenticated;`);
+    GRANT ALL ON meeting_chat TO anon, authenticated;
+    CREATE FUNCTION handle_new_user() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+      AS $$ BEGIN RETURN NEW; END $$;`);
   await db.exec(schema);
   const firstPass = (await db.query('SELECT id, transcript_id, transcript_text FROM meeting_transcripts ORDER BY id')).rows;
   assert.equal(firstPass.length, 3);
@@ -79,6 +81,7 @@ test('schema preserves repeated identity-key transcripts and supports legacy ins
     RESET ROLE;`);
   assert.equal((await db.query('SELECT payload FROM meeting_insights')).rows[0].payload.version, 2);
   assert.equal((await db.query('SELECT question FROM meeting_chat')).rows[0].question, 'Retain history');
+  assert.equal((await db.query("SELECT has_function_privilege('anon', 'handle_new_user()', 'EXECUTE') AS allowed")).rows[0].allowed, false);
   for (const role of ['anon', 'authenticated']) {
     await db.exec(`SET ROLE ${role}`);
     await assert.rejects(db.query('SELECT * FROM meeting_chat'), /permission denied/);
