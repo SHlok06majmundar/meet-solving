@@ -1,14 +1,15 @@
-import React from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import { Button } from '@mui/material'
-import { Google } from '@mui/icons-material'
+import { Button } from '@mui/material';
+import { Google } from '@mui/icons-material';
+import { useClerk, useAuth } from '@clerk/react'
 
 const GoogleSignInButton = ({ variant = 'contained', size = 'medium', fullWidth = false, ...props }) => {
-  const { signInWithGoogle, loading } = useAuth()
+  const { openSignIn } = useClerk()
+  const { isLoaded } = useAuth()
+  const loading = !isLoaded
 
   const handleGoogleSignIn = async () => {
     try {
-      await signInWithGoogle()
+      await openSignIn()
     } catch (error) {
       console.error('Failed to sign in with Google:', error)
     }

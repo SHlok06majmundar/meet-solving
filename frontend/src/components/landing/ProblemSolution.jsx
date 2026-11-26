@@ -1,7 +1,13 @@
-import React from 'react';
 import { Box, Typography, Container, Stack } from '@mui/material';
-import { motion } from 'framer-motion';
+
+
+
 import { GraphicEq, Description, AutoAwesome, FileDownload, Assessment } from '@mui/icons-material';
+
+
+
+
+import { motion } from 'framer-motion';
 
 const ProblemSolution = () => {
   const points = [
@@ -31,7 +37,7 @@ const ProblemSolution = () => {
     <Box sx={{ py: {xs: 12, md: 24}, color: 'var(--text-primary)', position: 'relative', width: '100%', backgroundColor: 'var(--bg-surface)' }}>
       <Container maxWidth="lg">
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={10} alignItems="center">
-          
+
           <Box sx={{ flex: 1, pr: { md: 8 } }}>
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.8, ease: "easeOut" }}>
                <Assessment sx={{ fontSize: 40, color: 'var(--text-secondary)', mb: 3 }} />
@@ -43,20 +49,20 @@ const ProblemSolution = () => {
                </Typography>
             </motion.div>
           </Box>
-          
+
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3, width: '100%' }}>
             {points.map((point, index) => (
-              <Box 
-                 key={index} 
-                 component={motion.div} 
-                 initial={{ opacity: 0, x: 30 }} 
-                 whileInView={{ opacity: 1, x: 0 }} 
-                 viewport={{ once: true }} 
+              <Box
+                 key={index}
+                 component={motion.div}
+                 initial={{ opacity: 0, x: 30 }}
+                 whileInView={{ opacity: 1, x: 0 }}
+                 viewport={{ once: true }}
                  transition={{ duration: 0.6, delay: index * 0.15 }}
-                 sx={{ 
-                   p: 4, 
-                   borderRadius: 'var(--card-radius)', 
-                   backgroundColor: 'var(--bg-dark)', 
+                 sx={{
+                   p: 4,
+                   borderRadius: 'var(--card-radius)',
+                   backgroundColor: 'var(--bg-dark)',
                    border: '1px solid var(--bg-border)',
                    transition: 'all 0.3s ease',
                    '&:hover': {

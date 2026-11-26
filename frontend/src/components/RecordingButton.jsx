@@ -1,25 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  IconButton, 
-  Tooltip, 
-  Dialog, 
-  DialogActions, 
-  DialogContent, 
-  DialogContentText, 
-  DialogTitle,
-  Button,
-  Box,
-  Typography,
-  CircularProgress
-} from '@mui/material';
+import { IconButton, Tooltip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button, Box, Typography, CircularProgress } from '@mui/material';
+
+
+
+
+
+
+
+
+
+
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import StopIcon from '@mui/icons-material/Stop';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import { useState, useEffect, useRef } from 'react';
+
+
 import RecordingService from '../services/RecordingService';
 
 /**
  * RecordingButton component for handling screen recording in meetings
- * 
+ *
  * @param {Object} props - Component props
  * @param {MediaStream} props.localStream - The local media stream to capture audio from
  * @param {Object} props.peerRefs - Reference to peer connections for capturing remote audio
@@ -31,19 +31,20 @@ function RecordingButton({ localStream, peerRefs, onError }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState(null);
-  
+
   // Use a ref to persist the recording service instance
   const recordingServiceRef = useRef(new RecordingService());
-  
+
   // Clean up on component unmount
   useEffect(() => {
+    const service = recordingServiceRef.current;
     return () => {
-      if (recordingServiceRef.current.isActive()) {
-        recordingServiceRef.current.stopRecording();
+      if (service.isActive()) {
+        service.stopRecording();
       }
     };
   }, []);
-  
+
   /**
    * Toggle recording state
    */
@@ -54,12 +55,12 @@ function RecordingButton({ localStream, peerRefs, onError }) {
         setIsProcessing(true);
         const blob = await recordingServiceRef.current.stopRecording();
         setIsProcessing(false);
-        
+
         if (blob) {
           setRecordedBlob(blob);
           setShowDownloadDialog(true);
         }
-        
+
         setIsRecording(false);
         setElapsedTime('00:00');
       } else {
@@ -69,7 +70,7 @@ function RecordingButton({ localStream, peerRefs, onError }) {
           (time) => setElapsedTime(time),
           peerRefs // Pass peer references to capture remote audio
         );
-        
+
         if (started) {
           setIsRecording(true);
         } else {
@@ -83,7 +84,7 @@ function RecordingButton({ localStream, peerRefs, onError }) {
       setIsProcessing(false);
     }
   };
-  
+
   /**
    * Handle download action
    */
@@ -92,12 +93,12 @@ function RecordingButton({ localStream, peerRefs, onError }) {
       const now = new Date();
       const dateString = now.toISOString().replace(/[:.]/g, '-').substring(0, 19);
       const filename = `nexus-meeting-${dateString}.webm`;
-      
+
       recordingServiceRef.current.downloadRecording(recordedBlob, filename);
     }
     setShowDownloadDialog(false);
   };
-  
+
   /**
    * Close the download dialog
    */
@@ -105,17 +106,17 @@ function RecordingButton({ localStream, peerRefs, onError }) {
     setShowDownloadDialog(false);
     setRecordedBlob(null);
   };
-  
+
   return (
     <>
       <Tooltip title={isRecording ? "Stop Recording" : "Start Recording"}>
         <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-          <IconButton
+          <IconButton aria-label={isRecording ? "Stop Recording" : "Start Recording"}
             onClick={toggleRecording}
             disabled={isProcessing}
-            sx={{ 
-              bgcolor: isRecording ? 'rgba(244, 67, 54, 0.1)' : 'rgba(76, 175, 80, 0.1)', 
-              color: isRecording ? 'var(--color-error)' : 'var(--color-success)', 
+            sx={{
+              bgcolor: isRecording ? 'rgba(244, 67, 54, 0.1)' : 'rgba(76, 175, 80, 0.1)',
+              color: isRecording ? 'var(--color-error)' : 'var(--color-success)',
               borderRadius: 'var(--button-radius)',
               p: { xs: 1, sm: 1.5 },
               '&:hover': {
@@ -125,7 +126,7 @@ function RecordingButton({ localStream, peerRefs, onError }) {
           >
             {isRecording ? <StopIcon /> : <FiberManualRecordIcon />}
           </IconButton>
-          
+
           {isRecording && (
             <Box
               sx={{
@@ -144,7 +145,7 @@ function RecordingButton({ localStream, peerRefs, onError }) {
               {elapsedTime}
             </Box>
           )}
-          
+
           {isProcessing && (
             <CircularProgress
               size={44}
@@ -159,7 +160,7 @@ function RecordingButton({ localStream, peerRefs, onError }) {
           )}
         </Box>
       </Tooltip>
-      
+
       {/* Download Dialog */}
       <Dialog
         open={showDownloadDialog}
@@ -174,9 +175,9 @@ function RecordingButton({ localStream, peerRefs, onError }) {
           <DialogContentText id="download-dialog-description">
             Your meeting recording is ready. Would you like to download it now?
           </DialogContentText>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'center',
             mt: 2,
             p: 2,
             bgcolor: 'rgba(0,0,0,0.04)',
@@ -192,10 +193,10 @@ function RecordingButton({ localStream, peerRefs, onError }) {
           <Button onClick={handleCloseDialog} color="inherit">
             Cancel
           </Button>
-          <Button 
-            onClick={handleDownload} 
-            variant="contained" 
-            color="primary" 
+          <Button
+            onClick={handleDownload}
+            variant="contained"
+            color="primary"
             startIcon={<FileDownloadIcon />}
             autoFocus
           >

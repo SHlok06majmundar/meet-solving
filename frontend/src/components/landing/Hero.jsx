@@ -1,192 +1,44 @@
-import React from 'react';
 import { Box, Typography, Container, Stack } from '@mui/material';
-import { motion } from 'framer-motion';
-import { ArrowOutward } from '@mui/icons-material';
+import { motion, useReducedMotion } from 'framer-motion';
 
-const Hero = ({ onStartTrial }) => {
+export default function Hero({ onStartTrial }) {
+  const reduceMotion = useReducedMotion();
+  const enter = delay => ({
+    initial: reduceMotion ? false : { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: reduceMotion ? 0 : 0.5, delay: reduceMotion ? 0 : delay },
+  });
+
   return (
-    <Box
-      sx={{
-        position: 'relative',
-        pt: { xs: 16, md: 20 },
-        pb: { xs: 8, md: 12 },
-        zIndex: 1,
-        minHeight: { xs: '78vh', md: '74vh' },
-        display: 'flex',
-        alignItems: 'center',
-      }}
-    >
-      {/* Subtle dot-grid background */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: 'radial-gradient(var(--bg-border) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-          opacity: 0.15,
-          zIndex: -1,
-        }}
-      />
-
-      {/* Bottom fade */}
-      <Box
-        sx={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: '300px',
-          background: 'linear-gradient(to top, var(--bg-dark), transparent)',
-          zIndex: -1,
-        }}
-      />
-
-      <Container maxWidth="lg">
-        <Box sx={{ textAlign: 'center', maxWidth: '760px', mx: 'auto' }}>
-          {/* Eyebrow */}
-          <Box
-            component={motion.div}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <Typography
-              sx={{
-                fontSize: { xs: '0.8rem', sm: '0.9rem' },
-                textTransform: 'uppercase',
-                letterSpacing: '0.15em',
-                color: 'var(--text-secondary)',
-                mb: 3,
-                fontWeight: 600,
-              }}
-            >
-              Nexus Command Layer
-            </Typography>
+    <Box component="section" aria-labelledby="hero-title" sx={{
+      position: 'relative', isolation: 'isolate',
+      pt: { xs: 17, sm: 19, md: 22 }, pb: { xs: 8, sm: 10, md: 12 },
+      minHeight: { xs: 'auto', md: 'min(760px, 88svh)' },
+      display: 'flex', alignItems: 'center',
+    }}>
+      <Box aria-hidden="true" sx={{ position: 'absolute', inset: 0, zIndex: -1, pointerEvents: 'none', background: 'radial-gradient(ellipse at 50% 22%, var(--hero-glow), transparent 66%)' }} />
+      <Container maxWidth="lg" sx={{ px: { xs: 2.5, sm: 4 } }}>
+        <Box sx={{ textAlign: 'center', maxWidth: 860, mx: 'auto' }}>
+          <Box component={motion.div} {...enter(0)} sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mb: { xs: 3, md: 4 }, py: 0.8, px: 1.6, border: '1px solid var(--bg-border)', background: 'var(--bg-surface)', borderRadius: '999px' }}>
+            <Box component="span" aria-hidden="true" sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'var(--color-primary)' }} />
+            <Typography component="span" sx={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Video meetings, with a clear next step</Typography>
           </Box>
-
-          {/* Main Headline */}
-          <Typography
-            component={motion.h1}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            variant="h1"
-            sx={{
-              fontSize: { xs: '2rem', sm: '2.6rem', md: '3.2rem' },
-              fontWeight: 800,
-              lineHeight: 1.08,
-              letterSpacing: '-0.02em',
-              mb: 3,
-              color: 'var(--text-primary)',
-              fontFamily: '"Playfair Display", serif', // Elegant serif font
-              // Alternative options: 
-              // fontFamily: '"Space Grotesk", sans-serif', // Modern geometric
-              // fontFamily: '"Inter", sans-serif', // Clean sans-serif
-              // fontFamily: '"Bebas Neue", cursive', // Bold display
-            }}
-          >
-            Run smarter meetings.
-            <br />
-            Convert conversations into <span style={{ color: 'var(--text-muted)' }}>execution.</span>
+          <Typography id="hero-title" component={motion.h1} {...enter(0.06)} sx={{ fontSize: 'clamp(2.15rem, 5.4vw, 4.25rem)', fontFamily: 'var(--font-heading)', fontWeight: 700, lineHeight: 1.08, letterSpacing: '-0.055em', mb: 3, color: 'var(--text-primary)', textWrap: 'balance' }}>
+            Better conversations.<br />
+            <Box component="span" sx={{ color: 'var(--color-primary)' }}>Clearer decisions.</Box>
           </Typography>
-
-          {/* Subtitle */}
-          <Typography
-            component={motion.p}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            sx={{
-              fontSize: { xs: '0.98rem', md: '1.05rem' },
-              maxWidth: 640,
-              mx: 'auto',
-              color: 'var(--text-secondary)',
-              lineHeight: 1.6,
-              mb: 4,
-              fontWeight: 400,
-            }}
-          >
-            Nexus captures decisions, tasks, risks, and highlights from your live meeting stream. Insights, score, and summaries are generated from the current session data.
+          <Typography component={motion.p} {...enter(0.12)} sx={{ fontSize: { xs: '1rem', sm: '1.125rem' }, maxWidth: 610, mx: 'auto', color: 'var(--text-secondary)', lineHeight: 1.8, mb: { xs: 4, md: 4.5 }, textWrap: 'pretty' }}>
+            Bring your team together with video, shared screens, and live captions. Turn the conversation into useful notes and next steps.
           </Typography>
-
-          {/* CTA Buttons */}
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={3}
-            justifyContent="center"
-            component={motion.div}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <Box
-              component="button"
-              className="btn-premium"
-              onClick={onStartTrial}
-              sx={{ py: 1.6, px: 4, fontSize: '0.95rem' }}
-            >
-              Open Dashboard <ArrowOutward sx={{ ml: 1, fontSize: '1.2rem' }} />
-            </Box>
-
-            <Box
-              component="button"
-              className="btn-premium-outline"
-              onClick={() => {
-                document.getElementById('product-preview')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              sx={{ py: 1.6, px: 4, fontSize: '0.95rem' }}
-            >
-              View Capability States
-            </Box>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="center" component={motion.div} {...enter(0.18)} sx={{ maxWidth: { xs: 340, sm: 'none' }, mx: 'auto' }}>
+            <Box component="button" type="button" className="btn-premium" onClick={onStartTrial} sx={{ py: 1.75, px: 3.5, fontSize: '1rem' }}>Start a meeting</Box>
+            <Box component="button" type="button" className="btn-premium-outline" onClick={() => document.getElementById('product-preview')?.scrollIntoView({ behavior: reduceMotion ? 'instant' : 'smooth' })} sx={{ py: 1.75, px: 3.5, fontSize: '1rem' }}>Explore the workspace</Box>
           </Stack>
-
-          {/* Trust strip */}
-          <Box
-            component={motion.div}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 0.6 }}
-            sx={{
-              mt: 5,
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              gap: { xs: 2, md: 4 },
-            }}
-          >
-            {[
-              'Action Center',
-              'Productivity Score',
-              'Smart Highlights',
-            ].map((item) => (
-              <Stack key={item} direction="row" spacing={1} alignItems="center">
-                <Box
-                  sx={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: '50%',
-                    backgroundColor: 'var(--text-muted)',
-                  }}
-                />
-                <Typography
-                  sx={{
-                    color: 'var(--text-muted)',
-                    fontSize: '0.76rem',
-                    fontWeight: 500,
-                  }}
-                >
-                  {item}
-                </Typography>
-              </Stack>
-            ))}
+          <Box component={motion.div} {...enter(0.24)} sx={{ mt: 4, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: { xs: 1.5, sm: 3 } }}>
+            {['Video & screen sharing', 'Live captions', 'Meeting insights'].map(item => <Typography key={item} sx={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500 }}>{item}</Typography>)}
           </Box>
         </Box>
       </Container>
     </Box>
   );
-};
-
-export default Hero;
+}

@@ -7,7 +7,7 @@ function registerSocketHandlers(io) {
     const clientIp = socket.handshake.headers['x-forwarded-for']
       || socket.handshake.address.replace(/^.*:/, '');
 
-    console.log(`User connected: ${socket.id} from ${clientIp}`);
+    console.log(`User connected: ${socket.id}`);
 
     socket.lastActivity = Date.now();
     userActivity.set(socket.id, {
@@ -17,7 +17,7 @@ function registerSocketHandlers(io) {
 
     socket.on('join-room', async payload => {
       try {
-        let { meetingId, username } = payload || {};
+        let { meetingId, username, hasAudio = true, hasVideo = true } = payload || {};
 
         if (!meetingId || typeof meetingId !== 'string') {
           socket.emit('error', { message: 'Invalid meeting ID' });
@@ -32,6 +32,11 @@ function registerSocketHandlers(io) {
           handleUserLeaving(io, socket, socket.meetingId);
         }
 
+        const room = activeRooms.get(meetingId);
+        if (room && !room.has(socket.id) && room.size >= (Number(process.env.MAX_PARTICIPANTS) || 12)) {
+          socket.emit('error', { message: 'This meeting has reached its participant limit.' });
+          return;
+        }
         await socket.join(meetingId);
         socket.username = username;
         socket.meetingId = meetingId;
@@ -43,8 +48,8 @@ function registerSocketHandlers(io) {
         activeRooms.get(meetingId).set(socket.id, {
           id: socket.id,
           username,
-          hasAudio: true,
-          hasVideo: true,
+          hasAudio,
+          hasVideo,
           joinedAt: Date.now(),
           clientAddress: clientIp,
           userAgent: socket.handshake.headers['user-agent'] || 'Unknown',
@@ -78,8 +83,8 @@ function registerSocketHandlers(io) {
         socket.to(meetingId).emit('user-joined', {
           id: socket.id,
           username,
-          hasAudio: true,
-          hasVideo: true,
+          hasAudio,
+          hasVideo,
           timestamp: Date.now(),
         });
 
@@ -96,6 +101,10 @@ function registerSocketHandlers(io) {
           message: 'Failed to join meeting room',
           details: NODE_ENV === 'development' ? error.message : 'Server error',
         });
+      } finally {
+        const finishJoin = socket.finishRoomJoin;
+        socket.finishRoomJoin = null;
+        finishJoin?.();
       }
     });
 
@@ -124,8 +133,16 @@ function registerSocketHandlers(io) {
         }
 
         const maxLength = 2000;
-        const truncatedText = text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+        const truncatedText = text.slice(0, maxLength);
         const actualMessageId = messageId || `${socket.id}-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+
+        const existing = (roomMessages.get(meetingId) || []).find(message => message.messageId === actualMessageId && message.id === socket.id);
+        if (existing) {
+          // A retry after a lost confirmation must not create a second chat message.
+          socket.emit('room-message-confirm', existing);
+          socket.emit(`room-message-confirm-${actualMessageId}`, existing);
+          return;
+        }
 
         const messageObj = {
           id: socket.id,
@@ -179,7 +196,8 @@ function registerSocketHandlers(io) {
 
     socket.on('user-typing', payload => {
       try {
-        const { meetingId, username } = payload || {};
+        const { meetingId } = payload || {};
+        const username = socket.username;
         socket.lastActivity = Date.now();
 
         if (!meetingId || !username) return;
@@ -193,7 +211,8 @@ function registerSocketHandlers(io) {
 
     socket.on('user-stopped-typing', payload => {
       try {
-        const { meetingId, username } = payload || {};
+        const { meetingId } = payload || {};
+        const username = socket.username;
 
         if (!meetingId || !username) return;
         if (socket.meetingId !== meetingId) return;
@@ -211,10 +230,9 @@ function registerSocketHandlers(io) {
         if (!messageId || !meetingId) return;
         if (socket.meetingId !== meetingId) return;
 
-        const senderIdMatch = messageId.match(/^([^-]+)-/);
-        if (!senderIdMatch) return;
-
-        const senderSocket = io.sockets.sockets.get(senderIdMatch[1]);
+        const message = (roomMessages.get(meetingId) || []).find(item => item.messageId === messageId);
+        if (!message) return;
+        const senderSocket = io.sockets.sockets.get(message.id);
         if (senderSocket) {
           senderSocket.emit('message-read-receipt', {
             messageId,
@@ -229,11 +247,11 @@ function registerSocketHandlers(io) {
 
     socket.on('offer', payload => {
       try {
-        const { targetId, offer, offererId, offererUsername } = payload || {};
+        const { targetId, offer } = payload || {};
         socket.lastActivity = Date.now();
 
-        const actualOffererId = offererId || socket.id;
-        const actualUsername = offererUsername || socket.username || 'Unknown User';
+        const actualOffererId = socket.id;
+        const actualUsername = socket.username || 'Unknown User';
 
         if (!targetId || !offer) {
           socket.emit('error', { message: 'Invalid offer parameters' });
@@ -275,11 +293,11 @@ function registerSocketHandlers(io) {
 
     socket.on('answer', payload => {
       try {
-        const { targetId, answer, answererId, answererUsername } = payload || {};
+        const { targetId, answer } = payload || {};
         socket.lastActivity = Date.now();
 
-        const actualAnswererId = answererId || socket.id;
-        const actualUsername = answererUsername || socket.username || 'Unknown User';
+        const actualAnswererId = socket.id;
+        const actualUsername = socket.username || 'Unknown User';
 
         if (!targetId || !answer) {
           socket.emit('error', { message: 'Invalid answer parameters' });
@@ -315,11 +333,11 @@ function registerSocketHandlers(io) {
 
     socket.on('ice-candidate', payload => {
       try {
-        const { targetId, candidate, senderId } = payload || {};
+        const { targetId, candidate } = payload || {};
 
         if (!targetId || !candidate) return;
 
-        const actualSenderId = senderId || socket.id;
+        const actualSenderId = socket.id;
         const targetSocket = io.sockets.sockets.get(targetId);
 
         if (!targetSocket) {
@@ -433,7 +451,7 @@ function registerSocketHandlers(io) {
 
     socket.on('screen-share-started', payload => {
       try {
-        const { roomId, userId } = payload || {};
+        const { roomId } = payload || {};
         socket.lastActivity = Date.now();
 
         const effectiveRoomId = roomId && activeRooms.has(roomId) ? roomId : socket.meetingId;
@@ -443,7 +461,7 @@ function registerSocketHandlers(io) {
         }
 
         socket.to(effectiveRoomId).emit('user-screen-share', {
-          userId: userId || socket.id,
+          userId: socket.id,
           username: socket.username || 'Unknown User',
           isSharing: true,
         });
@@ -471,7 +489,7 @@ function registerSocketHandlers(io) {
 
     socket.on('screen-share-stopped', payload => {
       try {
-        const { roomId, userId } = payload || {};
+        const { roomId } = payload || {};
         socket.lastActivity = Date.now();
 
         let effectiveRoomId = roomId && activeRooms.has(roomId) ? roomId : socket.meetingId;
@@ -484,13 +502,13 @@ function registerSocketHandlers(io) {
         }
 
         socket.to(effectiveRoomId).emit('user-screen-share', {
-          userId: userId || socket.id,
+          userId: socket.id,
           username: socket.username || 'Unknown User',
           isSharing: false,
         });
 
         socket.to(effectiveRoomId).emit('screen-share-stopped', {
-          userId: userId || socket.id,
+          userId: socket.id,
           username: socket.username || 'Unknown User',
           roomId: effectiveRoomId,
         });
@@ -556,7 +574,7 @@ function registerSocketHandlers(io) {
 
     socket.on('transcription-data', payload => {
       try {
-        const { meetingId, id, speakerId, speakerName, text, isFinal, timestamp, source } = payload || {};
+        const { meetingId, id, speakerId, text, isFinal, timestamp, source } = payload || {};
         socket.lastActivity = Date.now();
 
         if (!meetingId || !speakerId || !text) {
@@ -575,8 +593,8 @@ function registerSocketHandlers(io) {
 
         const transcriptionData = {
           id: id || `${speakerId}-${timestamp || Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
-          speakerId,
-          speakerName: speakerName || 'Unknown User',
+          speakerId: socket.auth.userId,
+          speakerName: socket.username || 'Unknown User',
           text: cleanText,
           isFinal: Boolean(isFinal),
           startTime: timestamp || new Date().toISOString(),
@@ -585,7 +603,6 @@ function registerSocketHandlers(io) {
           originalSenderId: socket.id
         };
 
-        console.log(`Broadcasting transcription from ${speakerName} in room ${meetingId}: "${cleanText.substring(0, 50)}..."`);
 
         // Broadcast to all other users in the room (except sender)
         socket.to(meetingId).emit('transcription-data', transcriptionData);
@@ -631,7 +648,7 @@ function registerSocketHandlers(io) {
 }
 
 function startInactiveUserCleanup(io) {
-  setInterval(() => {
+  return setInterval(() => {
     const now = Date.now();
     const inactivityThreshold = 30 * 60 * 1000;
 

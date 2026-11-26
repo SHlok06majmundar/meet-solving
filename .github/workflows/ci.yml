@@ -1,0 +1,41 @@
+name: Project checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - run: npm ci --prefix backend
+      - run: npm ci --prefix frontend
+      - run: npm run check
+      - run: npm audit --prefix backend --audit-level=moderate
+      - run: npm audit --prefix frontend --audit-level=moderate
+      - name: Install browser test runtime
+        if: matrix.node == 24
+        run: npx --prefix frontend playwright install --with-deps chromium
+      - name: Responsive browser and accessibility tests
+        if: matrix.node == 24
+        run: npm run test:e2e --prefix frontend
+      - name: Preserve browser reports
+        if: always() && matrix.node == 24
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7

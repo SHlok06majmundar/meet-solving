@@ -1,12 +1,12 @@
-import React from 'react';
-import { Box, Typography, Container, Stack } from '@mui/material';
-import { motion } from 'framer-motion';
-import { SignedIn, SignedOut, SignIn } from '@clerk/clerk-react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowOutward } from '@mui/icons-material';
+import { Show, SignIn } from '@clerk/react';
+import { Box, Typography, Container } from '@mui/material';
 
-const CTASection = ({ onGetStarted }) => {
-  const navigate = useNavigate();
+
+
+import { motion, useReducedMotion } from 'framer-motion';
+
+const CTASection = () => {
+  const reducedMotion = useReducedMotion();
 
   return (
     <Box
@@ -23,12 +23,12 @@ const CTASection = ({ onGetStarted }) => {
         <Box sx={{ textAlign: 'center' }}>
           <Box
             component={motion.div}
-            initial={{ opacity: 0, y: 20 }}
+            initial={reducedMotion ? false : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
             {/* Signed Out — Show CTA + Auth */}
-            <SignedOut>
+            <Show when="signed-out">
               <Typography
                 variant="h2"
                 sx={{
@@ -71,10 +71,10 @@ const CTASection = ({ onGetStarted }) => {
               >
                 <SignIn routing="hash" />
               </Box>
-            </SignedOut>
+            </Show>
 
             {/* Signed In — Show Dashboard CTA */}
-            <SignedIn>
+            <Show when="signed-in">
               {/* Main headline for authenticated users */}
               {/* <Typography
                 variant="h2"
@@ -105,8 +105,8 @@ const CTASection = ({ onGetStarted }) => {
               </Typography> */}
 
               {/* Primary action button container */}
-              
-            </SignedIn>
+
+            </Show>
           </Box>
         </Box>
       </Container>
