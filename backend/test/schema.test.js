@@ -41,3 +41,47 @@ test('schema upgrades legacy data, is repeatable, denies browser roles, and pers
   assert.deepEqual(rows[0].payload.summaryBullets, ['Saved']);
   assert.equal((await db.query('SELECT * FROM meeting_chats')).rows.length, 1);
 });
+
+test('schema preserves repeated identity-key transcripts and supports legacy insights upserts', async t => {
+  const db = new PGlite();
+  t.after(() => db.close());
+  await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
+    CREATE TABLE meeting_transcripts (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      meeting_id TEXT NOT NULL, user_id TEXT, transcript_id TEXT,
+      transcript_text TEXT NOT NULL, updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    INSERT INTO meeting_transcripts (meeting_id, user_id, transcript_id, transcript_text) VALUES
+      ('old-room', 'old-user', 'same-id', 'First version'),
+      ('old-room', 'old-user', 'same-id', 'Second version'),
+      ('old-room', NULL, NULL, 'Missing old identity');
+    CREATE TABLE meeting_insights (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      meeting_id TEXT NOT NULL, payload JSONB NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE meeting_chat (id BIGINT PRIMARY KEY, question TEXT);
+    INSERT INTO meeting_chat VALUES (1, 'Retain history');
+    GRANT ALL ON meeting_chat TO anon, authenticated;`);
+  await db.exec(schema);
+  const firstPass = (await db.query('SELECT id, transcript_id, transcript_text FROM meeting_transcripts ORDER BY id')).rows;
+  assert.equal(firstPass.length, 3);
+  assert.equal(new Set(firstPass.map(row => row.transcript_id)).size, 3);
+  assert.deepEqual(firstPass.map(row => row.transcript_text), ['First version', 'Second version', 'Missing old identity']);
+  await db.exec(schema);
+  assert.deepEqual((await db.query('SELECT id, transcript_id, transcript_text FROM meeting_transcripts ORDER BY id')).rows, firstPass);
+  await db.exec(`SET ROLE service_role;
+    INSERT INTO meeting_insights (meeting_id, payload) VALUES ('room', '{"version":1}')
+      ON CONFLICT (meeting_id) DO UPDATE SET payload = EXCLUDED.payload;
+    INSERT INTO meeting_insights (meeting_id, payload) VALUES ('room', '{"version":2}')
+      ON CONFLICT (meeting_id) DO UPDATE SET payload = EXCLUDED.payload;
+    INSERT INTO meeting_transcripts (meeting_id, user_id, transcript_id, transcript_text)
+      VALUES ('room', 'user', 'new-chunk', 'New transcript');
+    RESET ROLE;`);
+  assert.equal((await db.query('SELECT payload FROM meeting_insights')).rows[0].payload.version, 2);
+  assert.equal((await db.query('SELECT question FROM meeting_chat')).rows[0].question, 'Retain history');
+  for (const role of ['anon', 'authenticated']) {
+    await db.exec(`SET ROLE ${role}`);
+    await assert.rejects(db.query('SELECT * FROM meeting_chat'), /permission denied/);
+    await db.exec('RESET ROLE');
+  }
+});

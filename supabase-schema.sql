@@ -24,7 +24,7 @@ BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
 
@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS meeting_chats (
   answer TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Older installations used an identity primary key on insights.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_meeting_insights_meeting_unique ON meeting_insights(meeting_id);
 CREATE INDEX IF NOT EXISTS idx_meeting_chats_meeting_created ON meeting_chats(meeting_id, created_at);
 ALTER TABLE meetings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE meeting_members ENABLE ROW LEVEL SECURITY;
@@ -112,6 +114,17 @@ ALTER TABLE meeting_chats ENABLE ROW LEVEL SECURITY;
 
 -- Preserve legacy rows while scoping all new writes to meeting + verified author.
 UPDATE meeting_transcripts SET user_id = 'legacy-unclaimed' WHERE user_id IS NULL;
+UPDATE meeting_transcripts SET transcript_id = 'legacy-' || gen_random_uuid()::TEXT WHERE transcript_id IS NULL;
+-- Preserve repeated legacy chunks with distinct IDs before adding the scoped key.
+WITH ranked AS (
+  SELECT ctid, row_number() OVER (
+    PARTITION BY meeting_id, user_id, transcript_id
+    ORDER BY updated_at DESC NULLS LAST, ctid DESC
+  ) AS occurrence FROM meeting_transcripts
+)
+UPDATE meeting_transcripts AS transcript
+SET transcript_id = 'legacy-' || gen_random_uuid()::TEXT
+FROM ranked WHERE transcript.ctid = ranked.ctid AND ranked.occurrence > 1;
 ALTER TABLE meeting_transcripts ALTER COLUMN user_id SET NOT NULL;
 DO $$
 BEGIN
@@ -155,6 +168,27 @@ GRANT ALL ON profiles, meeting_transcripts, meetings, meeting_members, meeting_i
 GRANT USAGE, SELECT ON SEQUENCE meeting_chats_id_seq TO service_role;
 REVOKE ALL ON FUNCTION read_meeting_transcripts(TEXT, TIMESTAMPTZ, TEXT, TEXT, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION read_meeting_transcripts(TEXT, TIMESTAMPTZ, TEXT, TEXT, INTEGER) TO service_role;
+
+-- Keep the retired singular chat table private without deleting its history.
+DO $$
+DECLARE legacy_sequence TEXT;
+BEGIN
+  IF to_regclass('public.meeting_chat') IS NOT NULL THEN
+    ALTER TABLE public.meeting_chat ENABLE ROW LEVEL SECURITY;
+    REVOKE ALL ON public.meeting_chat FROM PUBLIC, anon, authenticated;
+    GRANT ALL ON public.meeting_chat TO service_role;
+  END IF;
+  FOR legacy_sequence IN
+    SELECT pg_get_serial_sequence(attrelid::regclass::TEXT, attname)
+    FROM pg_attribute
+    WHERE attrelid IN ('public.meeting_transcripts'::regclass, 'public.meeting_insights'::regclass)
+      AND attname = 'id' AND NOT attisdropped
+  LOOP
+    IF legacy_sequence IS NOT NULL THEN
+      EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %s TO service_role', legacy_sequence);
+    END IF;
+  END LOOP;
+END $$;
 
 
 COMMIT;

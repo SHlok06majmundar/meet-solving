@@ -157,7 +157,7 @@ async function saveInsight(meetingId, payload) {
   if (!meetingId || !payload) return;
 
   if (supabaseAdmin) {
-    const { error } = await supabaseAdmin.from('meeting_insights').upsert({ meeting_id: meetingId, payload, created_at: new Date().toISOString() });
+    const { error } = await supabaseAdmin.from('meeting_insights').upsert({ meeting_id: meetingId, payload, created_at: new Date().toISOString() }, { onConflict: 'meeting_id' });
     if (error) throw error;
     return;
   }
