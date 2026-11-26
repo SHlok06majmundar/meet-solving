@@ -12,9 +12,10 @@ const { asyncRoute } = require('../middleware/errors');
 const { validateBody } = require('../middleware/validation');
 
 router.get('/api/generate-meeting-id', generateMeetingId);
-router.get('/api/ice-servers', (req, res) => {
-  res.json({ iceServers: require('../services/iceService').getIceServers(req.auth.userId) });
-});
+router.get('/api/ice-servers', asyncRoute(async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ iceServers: await require('../services/iceService').getIceServers(req.auth.userId) });
+}));
 router.post('/api/meetings/:meetingId/join', asyncRoute(async (req, res) => {
   await joinMeeting(req.params.meetingId, req.auth.userId);
   res.json({ success: true });

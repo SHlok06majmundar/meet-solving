@@ -35,6 +35,12 @@ function validateProductionConfig() {
   if (ALLOWED_ORIGINS.some(origin => !origin.startsWith('https://'))) throw new Error('Production origins must use HTTPS');
   const turnUrls = process.env.TURN_URLS?.trim();
   const turnSecret = process.env.TURN_SHARED_SECRET;
+  const meteredDomain = process.env.METERED_TURN_DOMAIN?.trim();
+  const meteredKey = process.env.METERED_TURN_API_KEY;
+  if (meteredDomain || meteredKey) {
+    if (!meteredDomain || !meteredKey || !require('../services/iceService').validMeteredDomain(meteredDomain)) throw new Error('Configure METERED_TURN_DOMAIN as your app.metered.live hostname and METERED_TURN_API_KEY together');
+    if (turnUrls || turnSecret) throw new Error('Choose either Metered TURN or a shared-secret TURN relay');
+  }
   if (turnUrls || turnSecret) {
     if (!turnUrls || !turnSecret) throw new Error('Configure both TURN_URLS and TURN_SHARED_SECRET, or omit both for direct connections');
     if (turnSecret.length < 32) throw new Error('TURN_SHARED_SECRET must contain at least 32 characters');

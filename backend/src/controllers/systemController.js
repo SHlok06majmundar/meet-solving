@@ -18,7 +18,7 @@ function getStatus(req, res) {
       supabaseConfigured: Boolean(supabaseAdmin),
       supabaseUrlConfigured: Boolean(SUPABASE_URL),
       supabaseServiceRoleConfigured: Boolean(SUPABASE_SERVICE_ROLE_KEY),
-      turnConfigured: Boolean(process.env.TURN_URLS?.trim() && process.env.TURN_SHARED_SECRET),
+      turnConfigured: require('../services/iceService').isTurnConfigured(),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

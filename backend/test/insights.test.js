@@ -16,10 +16,10 @@ test('malformed provider output cannot become unexpected UI values', () => {
   assert.equal(result.score, 100);
 });
 
-test('TURN credentials are temporary and signed; the shared secret never leaves the server', () => {
+test('TURN credentials are temporary and signed; the shared secret never leaves the server', async () => {
   process.env.TURN_URLS = 'turn:relay.example:3478,turns:relay.example:5349';
   process.env.TURN_SHARED_SECRET = 'a-test-secret-that-is-long-enough-for-coturn';
-  const servers = getIceServers('alice');
+  const servers = await getIceServers('alice');
   const relay = servers[1];
   assert.equal(relay.urls.length, 2);
   const expiry = Number(relay.username.split(':')[0]);
