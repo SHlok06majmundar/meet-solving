@@ -1,21 +1,22 @@
-const { v4: uuidv4 } = require('uuid');
+const { createMeeting } = require('../services/accessService');
 const {
   saveTranscript,
   getMeetingTranscripts: fetchMeetingTranscripts,
   getLatestMeetingInsight,
 } = require('../services/meetingService');
 
-function generateMeetingId(req, res) {
-  const meetingId = uuidv4().substring(0, 8);
-  return res.json({ meetingId });
+async function generateMeetingId(req, res, next) {
+  try {
+    const meetingId = await createMeeting(req.auth.userId);
+    return res.json({ meetingId });
+  } catch (error) { next(error); }
 }
 
-async function saveTranscriptEntry(req, res) {
+async function saveTranscriptEntry(req, res, next) {
   try {
     const {
       meetingId,
       transcriptId,
-      userId,
       speakerName,
       text,
       source,
@@ -30,7 +31,7 @@ async function saveTranscriptEntry(req, res) {
     const storage = await saveTranscript({
       meetingId,
       transcriptId,
-      userId,
+      userId: req.auth.userId,
       speakerName,
       text,
       source: source || 'browser-stt',
@@ -46,18 +47,14 @@ async function saveTranscriptEntry(req, res) {
       });
     }
 
-    if (storage.source !== 'supabase') {
-      console.warn(`Transcript saved without Supabase persistence (source=${storage.source}) for meeting ${meetingId}`);
-    }
 
     return res.json({ success: true, storage });
   } catch (error) {
-    console.error('Transcript save error:', error);
-    return res.status(500).json({ error: 'Failed to save transcript', details: error.message });
+    return next(error);
   }
 }
 
-async function getMeetingTranscripts(req, res) {
+async function getMeetingTranscripts(req, res, next) {
   try {
     const { meetingId } = req.params;
     const { since, limit } = req.query;
@@ -80,14 +77,14 @@ async function getMeetingTranscripts(req, res) {
       transcripts: result.transcripts,
       latestCursor: result.latestCursor,
       source: result.source,
+      hasMore: result.hasMore,
     });
   } catch (error) {
-    console.error('Transcript fetch error:', error);
-    return res.status(500).json({ error: 'Failed to fetch transcripts', details: error.message });
+    return next(error);
   }
 }
 
-async function getLatestIntelligence(req, res) {
+async function getLatestIntelligence(req, res, next) {
   try {
     const meetingId = req.params.meetingId;
     const result = await getLatestMeetingInsight(meetingId);
@@ -101,7 +98,7 @@ async function getLatestIntelligence(req, res) {
 
     return res.json(result.data);
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to fetch latest insights', details: error.message });
+    return next(error);
   }
 }
 

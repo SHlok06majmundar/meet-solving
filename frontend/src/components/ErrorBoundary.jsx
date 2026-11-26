@@ -1,5 +1,8 @@
-import React from 'react';
 import { Box, Typography, Button, Paper } from '@mui/material';
+
+
+
+import React from 'react';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -7,7 +10,7 @@ class ErrorBoundary extends React.Component {
     this.state = { hasError: false, error: null, errorInfo: null };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError() {
     // Update state so the next render will show the fallback UI
     return { hasError: true };
   }
@@ -26,47 +29,47 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       // Fallback UI when an error occurs
       return (
-        <Box 
-          sx={{ 
-            display: 'flex', 
+        <Box
+          sx={{
+            display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center', 
+            alignItems: 'center',
             justifyContent: 'center',
             minHeight: '100vh',
             p: 3,
             background: 'var(--gradient-primary)'
           }}
         >
-          <Paper 
+          <Paper
             elevation={2}
-            sx={{ 
-              maxWidth: 500, 
-              width: '100%', 
-              p: 4, 
+            sx={{
+              maxWidth: 500,
+              width: '100%',
+              p: 4,
               textAlign: 'center',
               borderRadius: 'var(--card-radius)',
               boxShadow: 'var(--shadow-soft)'
             }}
           >
-            <Typography 
-              variant="h5" 
-              color="error.main" 
+            <Typography
+              variant="h5"
+              color="error.main"
               gutterBottom
               sx={{ fontWeight: 600 }}
             >
               Oops! Something went wrong
             </Typography>
-            <Typography 
-              variant="body1" 
+            <Typography
+              variant="body1"
               color="text.secondary"
               sx={{ mb: 3 }}
             >
-              The application encountered an unexpected error. We've been notified and are working to fix it.
+              The application encountered an unexpected error. Reload the page to try again.
             </Typography>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               onClick={this.handleReload}
-              sx={{ 
+              sx={{
                 borderRadius: 'var(--button-radius)',
                 background: 'var(--gradient-accent)',
                 py: 1,
@@ -75,18 +78,18 @@ class ErrorBoundary extends React.Component {
             >
               Reload Application
             </Button>
-            
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+
+            {import.meta.env.DEV && this.state.error && (
               <Box sx={{ mt: 4, textAlign: 'left' }}>
                 <Typography variant="subtitle2" color="error" sx={{ fontWeight: 600 }}>
                   Error Details (development only):
                 </Typography>
-                <Box 
-                  sx={{ 
-                    p: 2, 
-                    mt: 1, 
-                    backgroundColor: 'rgba(0,0,0,0.05)', 
-                    borderRadius: 1, 
+                <Box
+                  sx={{
+                    p: 2,
+                    mt: 1,
+                    backgroundColor: 'rgba(0,0,0,0.05)',
+                    borderRadius: 1,
                     fontFamily: 'monospace',
                     fontSize: '0.8rem',
                     overflowX: 'auto'
@@ -104,7 +107,7 @@ class ErrorBoundary extends React.Component {
       );
     }
 
-    return this.props.children; 
+    return this.props.children;
   }
 }
 

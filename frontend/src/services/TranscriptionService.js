@@ -30,7 +30,7 @@ class TranscriptionService {
       { code: 'en-IN', name: 'English (India)' },
       { code: 'en-AU', name: 'English (Australia)' },
       { code: 'en-CA', name: 'English (Canada)' },
-      
+
       // Indian languages
       { code: 'hi-IN', name: 'Hindi' },
       { code: 'gu-IN', name: 'Gujarati' },
@@ -42,7 +42,7 @@ class TranscriptionService {
       { code: 'pa-Guru-IN', name: 'Punjabi' },
       { code: 'bn-IN', name: 'Bengali' },
       { code: 'ur-IN', name: 'Urdu' },
-      
+
       // European languages
       { code: 'es-ES', name: 'Spanish' },
       { code: 'fr-FR', name: 'French' },
@@ -54,7 +54,7 @@ class TranscriptionService {
       { code: 'nl-NL', name: 'Dutch' },
       { code: 'pl-PL', name: 'Polish' },
       { code: 'sv-SE', name: 'Swedish' },
-      
+
       // Asian languages
       { code: 'ja-JP', name: 'Japanese' },
       { code: 'ko-KR', name: 'Korean' },
@@ -67,9 +67,9 @@ class TranscriptionService {
     ];
     this.currentLanguage = 'auto-global';
     this.lastDetectedRecognitionLang = null;
-    
+
     // Check if speech recognition is supported
-    this.isSupported = 'webkitSpeechRecognition' in window || 
+    this.isSupported = 'webkitSpeechRecognition' in window ||
                       'SpeechRecognition' in window;
   }
 
@@ -81,28 +81,28 @@ class TranscriptionService {
       console.error('Speech recognition is not supported in this browser');
       return false;
     }
-    
+
     // Create speech recognition instance
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     this.recognition = new SpeechRecognition();
-    
+
     // Configure recognition
     this.recognition.continuous = true;
     this.recognition.interimResults = true;
     this.recognition.lang = this.getRecognitionLanguage();
-    
+
     // Set up event handlers
     this.recognition.onstart = () => {
       console.log('Transcription started');
       this.isRecognitionRunning = true;
       this.isRecognitionStarting = false;
     };
-    
+
     this.recognition.onresult = (event) => {
       // Browser recognition runs on local microphone input, so keep speaker identity local.
       const speakerId = this.currentSpeakerId;
       const speakerName = this.currentSpeakerName;
-      
+
       // Only process if we have a valid speaker
       if (speakerId && speakerName) {
         console.log(`Processing transcript for ${speakerName} (${speakerId})`);
@@ -137,7 +137,7 @@ class TranscriptionService {
 
               if (!duplicateFinal) {
                 this.transcripts.push({
-                  id: `transcript-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
+                  id: `${speakerId}-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
                   speakerId,
                   speakerName,
                   text,
@@ -153,7 +153,7 @@ class TranscriptionService {
               this.transcripts[existingIndex].text = text;
             }
           } else {
-            const newId = `transcript-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+            const newId = `${speakerId}-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
             this.interimTranscriptBySpeaker[speakerId] = newId;
             this.transcripts.push({
               id: newId,
@@ -166,7 +166,7 @@ class TranscriptionService {
             });
           }
         }
-        
+
         // Notify listeners
         if (this.onTranscriptCallback) {
           this.onTranscriptCallback([...this.transcripts]);
@@ -175,12 +175,12 @@ class TranscriptionService {
         console.warn('Received transcript but no valid speaker is identified');
       }
     };
-    
+
     this.recognition.onerror = (event) => {
       if (event.error !== 'no-speech') {
         console.error('Transcription error:', event.error);
       }
-      
+
       // Check if error is due to no audio input
       if (event.error === 'no-speech' || event.error === 'audio-capture') {
         // Verify if microphone is actually enabled
@@ -202,18 +202,18 @@ class TranscriptionService {
           return;
         }
       }
-      
+
       if (this.onErrorCallback) {
         this.onErrorCallback(`Transcription error: ${event.error}`);
       }
-      
+
       // Improved restart logic - be more selective about when to restart
       const restartableErrors = ['network', 'service-not-allowed'];
-      const shouldRestart = restartableErrors.includes(event.error) && 
-                          event.error !== 'aborted' && 
+      const shouldRestart = restartableErrors.includes(event.error) &&
+                          event.error !== 'aborted' &&
                           this.isTranscribing &&
                           !this.restartTimer;
-      
+
       if (shouldRestart) {
         this.restartRecognition();
       } else if (event.error === 'aborted') {
@@ -227,21 +227,21 @@ class TranscriptionService {
         }, 3000);
       }
     };
-    
+
     this.recognition.onend = () => {
       console.log('Transcription ended');
       this.isRecognitionRunning = false;
       this.isRecognitionStarting = false;
-      
+
       // Restart if we're still supposed to be transcribing
       if (this.isTranscribing) {
         this.restartRecognition();
       }
     };
-    
+
     return true;
   }
-  
+
   /**
    * Start the transcription process
    * @param {string} speakerId - ID of the current speaker
@@ -251,7 +251,7 @@ class TranscriptionService {
    * @param {MediaStream} stream - Optional media stream to verify audio availability
    * @param {Array} remotePeers - Optional array of remote peer objects with streams
    */
-  startTranscription(speakerId, speakerName, onTranscript, onError, stream = null, remotePeers = []) {
+  startTranscription(speakerId, speakerName, onTranscript, onError, stream = null, _remotePeers = []) {
     // If recognition is already active, treat start as idempotent and just refresh context.
     if (this.isTranscribing) {
       this.currentSpeakerId = speakerId;
@@ -266,7 +266,7 @@ class TranscriptionService {
       if (onError) onError('Speech recognition is not supported in this browser');
       return false;
     }
-    
+
     // Verify we have audio access if stream is provided
     if (stream) {
       const audioTracks = stream.getAudioTracks();
@@ -275,14 +275,14 @@ class TranscriptionService {
         if (onError) onError('No audio source found. Please check your microphone.');
         return false;
       }
-      
+
       // Check if audio track is enabled
       if (!audioTracks.some(track => track.enabled)) {
         console.error('Audio track is disabled');
         if (onError) onError('Your microphone is currently muted. Please unmute to use transcription.');
         return false;
       }
-      
+
       console.log('Audio track verified:', audioTracks[0].label, 'enabled:', audioTracks[0].enabled);
     } else {
       // If no stream provided but we have a stored stream, use that for validation
@@ -297,20 +297,20 @@ class TranscriptionService {
         console.warn('No media stream provided for audio validation');
       }
     }
-    
+
     // Set current speaker
     this.currentSpeakerId = speakerId;
     this.currentSpeakerName = speakerName;
-    
+
     // Set callbacks
     this.onTranscriptCallback = onTranscript;
     this.onErrorCallback = onError;
-    
+
     // Store the stream reference for later use if provided
     if (stream) {
       this.mediaStream = stream;
     }
-    
+
     // Start recognition
     try {
       this.isRecognitionStarting = true;
@@ -334,50 +334,10 @@ class TranscriptionService {
       return false;
     }
   }
-  
+
   /**
    * Stop the transcription process
    */
-  stopTranscription() {
-    if (this.recognition) {
-      this.isTranscribing = false;
-      this.isRecognitionStarting = false;
-      this.isRecognitionRunning = false;
-      if (this.restartTimer) {
-        clearTimeout(this.restartTimer);
-        this.restartTimer = null;
-      }
-      
-      try {
-        this.recognition.stop();
-      } catch (err) {
-        console.error('Error stopping transcription:', err);
-      }
-      
-      // Finalize any remaining interim results
-      this.transcripts = this.transcripts.map(transcript => {
-        if (!transcript.isFinal) {
-          return {
-            ...transcript,
-            isFinal: true,
-            endTime: new Date().toISOString()
-          };
-        }
-        return transcript;
-      });
-      
-      // Notify listeners of final state
-      if (this.onTranscriptCallback) {
-        this.onTranscriptCallback([...this.transcripts]);
-      }
-      
-      // Clean up remote audio sources and detection
-      this.activeSpeaker = null;
-      this.remoteAudioSources = {};
-      this.interimTranscriptBySpeaker = {};
-    }
-  }
-  
   /**
    * Restart recognition after an error or timeout
    */
@@ -389,7 +349,7 @@ class TranscriptionService {
 
       // Add restart counter to prevent infinite loops
       this.restartCount = (this.restartCount || 0) + 1;
-      
+
       // If we've restarted too many times, stop trying
       if (this.restartCount > 5) {
         console.error('Transcription failed to start after multiple attempts. Please refresh the page.');
@@ -417,7 +377,7 @@ class TranscriptionService {
 
         // Increase delay for each restart attempt
         const delay = Math.min(1000 * this.restartCount, 5000);
-        
+
         this.restartTimer = setTimeout(() => {
           this.restartTimer = null;
           if (!this.isTranscribing || this.isRecognitionRunning || this.isRecognitionStarting) {
@@ -440,7 +400,7 @@ class TranscriptionService {
         }, delay);
       } catch (err) {
         console.error('Error restarting transcription:', err);
-        
+
         // If we can't restart after multiple attempts, stop trying
         if (this.restartCount >= 3) {
           this.stopTranscription();
@@ -453,26 +413,25 @@ class TranscriptionService {
    * Stop transcription and clean up resources
    */
   stopTranscription() {
+    const shouldStop = this.isRecognitionRunning || this.isRecognitionStarting;
     this.isTranscribing = false;
-    this.restartCount = 0; // Reset restart counter
-    
-    if (this.restartTimer) {
-      clearTimeout(this.restartTimer);
-      this.restartTimer = null;
-    }
-    
-    if (this.recognition && this.isRecognitionRunning) {
-      try {
-        this.recognition.stop();
-      } catch (err) {
-        console.warn('Error stopping recognition:', err);
-      }
-    }
-    
+    this.restartCount = 0;
     this.isRecognitionRunning = false;
     this.isRecognitionStarting = false;
+    if (this.restartTimer) clearTimeout(this.restartTimer);
+    this.restartTimer = null;
+    if (this.recognition && shouldStop) {
+      try { this.recognition.stop(); } catch (error) { console.warn('Unable to stop recognition:', error); }
+    }
+    this.transcripts = this.transcripts.map(item => item.isFinal ? item : {
+      ...item, isFinal: true, endTime: new Date().toISOString(),
+    });
+    this.activeSpeaker = null;
+    this.remoteAudioSources = {};
+    this.interimTranscriptBySpeaker = {};
+    this.onTranscriptCallback?.([...this.transcripts]);
   }
-  
+
   /**
    * Get remote stream from peer connection if available
    * @param {RTCPeerConnection} peerConnection - The WebRTC peer connection
@@ -480,14 +439,14 @@ class TranscriptionService {
    */
   getRemoteStreamFromPeer(peerConnection) {
     if (!peerConnection) return null;
-    
+
     // Try different methods to get the remote stream
     // Method 1: getRemoteStreams() (older API)
     if (typeof peerConnection.getRemoteStreams === 'function') {
       const streams = peerConnection.getRemoteStreams();
       if (streams && streams.length > 0) return streams[0];
     }
-    
+
     // Method 2: getReceivers() (newer API)
     if (typeof peerConnection.getReceivers === 'function') {
       const receivers = peerConnection.getReceivers();
@@ -496,7 +455,7 @@ class TranscriptionService {
         const tracks = receivers
           .filter(receiver => receiver.track)
           .map(receiver => receiver.track);
-        
+
         if (tracks.length > 0) {
           try {
             return new MediaStream(tracks);
@@ -506,10 +465,10 @@ class TranscriptionService {
         }
       }
     }
-    
+
     return null;
   }
-  
+
   /**
    * Restart transcription with a new audio stream
    * @param {MediaStream} stream - The new media stream to use
@@ -520,55 +479,55 @@ class TranscriptionService {
       console.error('No stream provided to restart with');
       return false;
     }
-    
+
     // Check if the stream has audio tracks
     const audioTracks = stream.getAudioTracks();
     if (audioTracks.length === 0) {
       console.error('Stream has no audio tracks');
       return false;
     }
-    
+
     // Check if audio is enabled
     const hasEnabledAudio = audioTracks.some(track => track.enabled);
-    
+
     // Store the new stream regardless of state so we have the latest reference
     this.mediaStream = stream;
-    
+
     // If audio is not enabled, we should stop transcription if it's running
     if (!hasEnabledAudio && this.isTranscribing) {
       console.log('Audio is disabled, stopping transcription');
       this.stopTranscription();
-      
+
       if (this.onErrorCallback) {
         this.onErrorCallback('Transcription stopped because microphone was turned off.');
       }
-      
+
       return false;
     }
-    
+
     // If audio is enabled and we're already transcribing, restart to use the new stream
     if (hasEnabledAudio && this.isTranscribing) {
       console.log('Restarting transcription with new stream');
-      
+
       try {
         this.stopTranscription();
-        
+
         // Brief timeout to ensure clean restart
         setTimeout(() => {
           this.recognition.start();
           this.isTranscribing = true;
         }, 100);
-        
+
         return true;
       } catch (err) {
         console.error('Error restarting transcription with new stream:', err);
         return false;
       }
     }
-    
+
     return true;
   }
-  
+
   /**
    * Set the active speaker for transcription
    * @param {string} speakerId - ID of the current speaker
@@ -578,7 +537,7 @@ class TranscriptionService {
     this.currentSpeakerId = speakerId;
     this.currentSpeakerName = speakerName;
   }
-  
+
   /**
    * Change the recognition language
    * @param {string} languageCode - Language code (e.g. 'en-US')
@@ -587,22 +546,22 @@ class TranscriptionService {
     if (this.supportedLanguages.some(lang => lang.code === languageCode)) {
       this.currentLanguage = languageCode;
       this.lastDetectedRecognitionLang = null;
-      
+
       if (this.recognition) {
         this.recognition.lang = this.getRecognitionLanguage();
-        
+
         // Restart if currently running
         if (this.isTranscribing) {
           this.stopTranscription();
           setTimeout(() => this.startTranscription(
-            this.currentSpeakerId, 
-            this.currentSpeakerName, 
-            this.onTranscriptCallback, 
+            this.currentSpeakerId,
+            this.currentSpeakerName,
+            this.onTranscriptCallback,
             this.onErrorCallback
           ), 100);
         }
       }
-      
+
       return true;
     }
     return false;
@@ -707,7 +666,7 @@ class TranscriptionService {
       console.log(`Adaptive language switched to ${normalizedTarget}`);
     }
   }
-  
+
   /**
    * Get all transcripts
    * @returns {Array} Array of transcript objects
@@ -715,18 +674,18 @@ class TranscriptionService {
   getAllTranscripts() {
     return [...this.transcripts];
   }
-  
+
   /**
    * Clear all transcripts
    */
   clearTranscripts() {
     this.transcripts = [];
-    
+
     if (this.onTranscriptCallback) {
       this.onTranscriptCallback(this.transcripts);
     }
   }
-  
+
   getExportSource(transcriptsOverride = null) {
     const source = Array.isArray(transcriptsOverride)
       ? transcriptsOverride
@@ -751,7 +710,7 @@ class TranscriptionService {
   exportTranscripts(format = 'txt', transcriptsOverride = null) {
     const exportSource = this.getExportSource(transcriptsOverride);
     if (exportSource.length === 0) return null;
-    
+
     if (format === 'json') {
       const jsonData = JSON.stringify(exportSource, null, 2);
       return new Blob([jsonData], { type: 'application/json' });
@@ -762,14 +721,14 @@ class TranscriptionService {
       // Default to text format
       let textContent = 'Meeting Transcription\n';
       textContent += '====================\n\n';
-      
+
       // Group transcripts by date
       const transcriptsByDate = this.groupTranscriptsByDate(exportSource);
-      
+
       Object.entries(transcriptsByDate).forEach(([date, dailyTranscripts]) => {
         textContent += `${date}\n`;
         textContent += '-'.repeat(date.length) + '\n\n';
-        
+
         dailyTranscripts.forEach(transcript => {
           const time = new Date(transcript.startTime).toLocaleTimeString();
           const status = transcript.isFinal ? 'final' : 'interim';
@@ -777,11 +736,11 @@ class TranscriptionService {
         });
         textContent += '\n';
       });
-      
+
       return new Blob([textContent], { type: 'text/plain' });
     }
   }
-  
+
   /**
    * Generate a PDF document from transcripts
    * @param {Array|null} transcriptsOverride - Optional transcript list to render
@@ -802,10 +761,10 @@ class TranscriptionService {
         return this.exportTranscripts('txt', exportSource);
       }
     }
-    
+
     // Wait a moment to ensure libraries are initialized
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     return new Promise((resolve) => {
       try {
         // Create temporary element to render the transcript content
@@ -815,7 +774,7 @@ class TranscriptionService {
         tempEl.style.top = '0';
         tempEl.style.width = '800px';
         document.body.appendChild(tempEl);
-        
+
         // Style the PDF content
         tempEl.innerHTML = `
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
@@ -824,31 +783,31 @@ class TranscriptionService {
             <div id="transcription-content"></div>
           </div>
         `;
-        
+
         const contentEl = tempEl.querySelector('#transcription-content');
-        
+
         // Group transcripts by date for better organization
         const transcriptsByDate = this.groupTranscriptsByDate(exportSource);
-        
+
         Object.entries(transcriptsByDate).forEach(([date, dailyTranscripts]) => {
           const dateDiv = document.createElement('div');
           dateDiv.style.marginBottom = '20px';
-          
+
           dateDiv.innerHTML = `
             <h2 style="color: #4527a0; border-bottom: 1px solid #ddd; padding-bottom: 5px;">${date}</h2>
           `;
-          
+
           const transcriptsUl = document.createElement('ul');
           transcriptsUl.style.listStyle = 'none';
           transcriptsUl.style.padding = '0';
-          
+
           dailyTranscripts.forEach(transcript => {
             const time = new Date(transcript.startTime).toLocaleTimeString();
             const li = document.createElement('li');
             li.style.marginBottom = '10px';
             li.style.paddingLeft = '10px';
             li.style.borderLeft = transcript.isFinal ? '3px solid #e1bee7' : '3px solid #bbdefb';
-            
+
             li.innerHTML = `
               <p style="margin: 0;">
                 <strong style="color: #512da8;">${transcript.speakerName}</strong>
@@ -856,18 +815,18 @@ class TranscriptionService {
               </p>
               <p style="margin: 5px 0 0 0; color: #424242;">${transcript.text}</p>
             `;
-            
+
             transcriptsUl.appendChild(li);
           });
-          
+
           dateDiv.appendChild(transcriptsUl);
           contentEl.appendChild(dateDiv);
         });
-        
+
         // Use html2canvas to convert HTML to image for PDF
         window.html2canvas(tempEl).then(canvas => {
           const imgData = canvas.toDataURL('image/png');
-          
+
           // Initialize PDF
           const { jsPDF } = window.jspdf;
           const doc = new jsPDF({
@@ -875,29 +834,29 @@ class TranscriptionService {
             unit: 'mm',
             format: 'a4'
           });
-          
+
           // Calculate dimensions
           const imgProps = doc.getImageProperties(imgData);
           const pdfWidth = doc.internal.pageSize.getWidth();
           const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-          
+
           // Add image to PDF (possibly multiple pages)
           let heightLeft = pdfHeight;
           let position = 0;
-          let page = 1;
-          
+
+
           doc.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
           heightLeft -= doc.internal.pageSize.getHeight();
-          
+
           // Add more pages if content overflows
           while (heightLeft >= 0) {
             position = heightLeft - pdfHeight;
             doc.addPage();
             doc.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
             heightLeft -= doc.internal.pageSize.getHeight();
-            page++;
+
           }
-          
+
           // Add page numbers
           const pageCount = doc.internal.getNumberOfPages();
           for (let i = 1; i <= pageCount; i++) {
@@ -908,13 +867,13 @@ class TranscriptionService {
               align: 'center'
             });
           }
-          
+
           // Create blob from PDF
           const pdfBlob = doc.output('blob');
-          
+
           // Clean up temporary element
           document.body.removeChild(tempEl);
-          
+
           resolve(pdfBlob);
         }).catch(err => {
           console.error('Error in html2canvas:', err);
@@ -928,7 +887,7 @@ class TranscriptionService {
       }
     });
   }
-  
+
   /**
    * Load the necessary libraries for PDF generation
    * @returns {Promise<void>} Promise that resolves when libraries are loaded
@@ -942,7 +901,7 @@ class TranscriptionService {
           resolve();
           return;
         }
-        
+
         const script = document.createElement('script');
         script.src = src;
         script.async = true;
@@ -951,16 +910,16 @@ class TranscriptionService {
         document.head.appendChild(script);
       });
     };
-    
+
     // Load jsPDF and html2canvas
     await Promise.all([
       loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
       loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
     ]);
-    
+
     // Wait a moment to ensure libraries are initialized
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     return new Promise((resolve) => {
       try {
         // Create temporary element to render the transcript content
@@ -970,7 +929,7 @@ class TranscriptionService {
         tempEl.style.top = '0';
         tempEl.style.width = '800px';
         document.body.appendChild(tempEl);
-        
+
         // Style the PDF content
         tempEl.innerHTML = `
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
@@ -979,24 +938,24 @@ class TranscriptionService {
             <div id="transcription-content"></div>
           </div>
         `;
-        
+
         const contentEl = tempEl.querySelector('#transcription-content');
-        
+
         // Group transcripts by date for better organization
         const transcriptsByDate = this.groupTranscriptsByDate();
-        
+
         Object.entries(transcriptsByDate).forEach(([date, dailyTranscripts]) => {
           const dateDiv = document.createElement('div');
           dateDiv.style.marginBottom = '20px';
-          
+
           dateDiv.innerHTML = `
             <h2 style="color: #4527a0; border-bottom: 1px solid #ddd; padding-bottom: 5px;">${date}</h2>
           `;
-          
+
           const transcriptsUl = document.createElement('ul');
           transcriptsUl.style.listStyle = 'none';
           transcriptsUl.style.padding = '0';
-          
+
           dailyTranscripts.forEach(transcript => {
             if (transcript.isFinal) {
               const time = new Date(transcript.startTime).toLocaleTimeString();
@@ -1004,7 +963,7 @@ class TranscriptionService {
               li.style.marginBottom = '10px';
               li.style.paddingLeft = '10px';
               li.style.borderLeft = '3px solid #e1bee7';
-              
+
               li.innerHTML = `
                 <p style="margin: 0;">
                   <strong style="color: #512da8;">${transcript.speakerName}</strong>
@@ -1012,19 +971,19 @@ class TranscriptionService {
                 </p>
                 <p style="margin: 5px 0 0 0; color: #424242;">${transcript.text}</p>
               `;
-              
+
               transcriptsUl.appendChild(li);
             }
           });
-          
+
           dateDiv.appendChild(transcriptsUl);
           contentEl.appendChild(dateDiv);
         });
-        
+
         // Use html2canvas to convert HTML to image for PDF
         window.html2canvas(tempEl).then(canvas => {
           const imgData = canvas.toDataURL('image/png');
-          
+
           // Initialize PDF
           const { jsPDF } = window.jspdf;
           const doc = new jsPDF({
@@ -1032,29 +991,29 @@ class TranscriptionService {
             unit: 'mm',
             format: 'a4'
           });
-          
+
           // Calculate dimensions
           const imgProps = doc.getImageProperties(imgData);
           const pdfWidth = doc.internal.pageSize.getWidth();
           const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-          
+
           // Add image to PDF (possibly multiple pages)
           let heightLeft = pdfHeight;
           let position = 0;
-          let page = 1;
-          
+
+
           doc.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
           heightLeft -= doc.internal.pageSize.getHeight();
-          
+
           // Add more pages if content overflows
           while (heightLeft >= 0) {
             position = heightLeft - pdfHeight;
             doc.addPage();
             doc.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
             heightLeft -= doc.internal.pageSize.getHeight();
-            page++;
+
           }
-          
+
           // Add page numbers
           const pageCount = doc.internal.getNumberOfPages();
           for (let i = 1; i <= pageCount; i++) {
@@ -1065,13 +1024,13 @@ class TranscriptionService {
               align: 'center'
             });
           }
-          
+
           // Create blob from PDF
           const pdfBlob = doc.output('blob');
-          
+
           // Clean up temporary element
           document.body.removeChild(tempEl);
-          
+
           resolve(pdfBlob);
         });
       } catch (err) {
@@ -1081,7 +1040,7 @@ class TranscriptionService {
       }
     });
   }
-  
+
   /**
    * Group transcripts by date for better organization
    * @returns {Object} Map of dates to transcript arrays
@@ -1089,7 +1048,7 @@ class TranscriptionService {
   groupTranscriptsByDate(transcriptsOverride = null) {
     const transcriptsByDate = {};
     const exportSource = this.getExportSource(transcriptsOverride);
-    
+
     exportSource.forEach(transcript => {
       const date = new Date(transcript.startTime).toLocaleDateString(undefined, {
         weekday: 'long',
@@ -1097,17 +1056,17 @@ class TranscriptionService {
         month: 'long',
         day: 'numeric'
       });
-      
+
       if (!transcriptsByDate[date]) {
         transcriptsByDate[date] = [];
       }
 
       transcriptsByDate[date].push(transcript);
     });
-    
+
     return transcriptsByDate;
   }
-  
+
   /**
    * Check if transcription is currently active
    * @returns {boolean} True if transcription is active
@@ -1115,7 +1074,7 @@ class TranscriptionService {
   isActive() {
     return this.isTranscribing;
   }
-  
+
   /**
    * Check if speech recognition is supported in this browser
    * @returns {boolean} True if supported
@@ -1123,18 +1082,18 @@ class TranscriptionService {
   isSpeechRecognitionSupported() {
     return this.isSupported;
   }
-  
+
   /**
    * Check if audio is available and enabled in the current media stream
    * @returns {boolean} True if audio is available and enabled
    */
   isAudioAvailable() {
     if (!this.mediaStream) return false;
-    
+
     const audioTracks = this.mediaStream.getAudioTracks();
     return audioTracks.length > 0 && audioTracks.some(track => track.enabled);
   }
-  
+
   /**
    * Update the media stream reference
    * @param {MediaStream} stream - The new media stream
@@ -1142,11 +1101,11 @@ class TranscriptionService {
    */
   updateMediaStream(stream) {
     if (!stream) return false;
-    
+
     this.mediaStream = stream;
     return true;
   }
-  
+
   /**
    * Add or update a remote participant's audio stream
    * @param {string} participantId - The remote participant's ID
@@ -1159,16 +1118,16 @@ class TranscriptionService {
       console.error('Invalid participant ID or stream');
       return false;
     }
-    
+
     // Check if the stream has audio tracks
     const audioTracks = stream.getAudioTracks();
     if (audioTracks.length === 0) {
       console.log(`Remote participant ${participantId} has no audio tracks`);
       return false;
     }
-    
+
     console.log(`Adding/updating remote audio for ${participantName} (${participantId})`);
-    
+
     // Store the remote participant's audio information
     this.remoteAudioSources[participantId] = {
       id: participantId,
@@ -1177,13 +1136,13 @@ class TranscriptionService {
       audioLevel: 0,
       lastActive: null
     };
-    
+
     // Start audio level detection for voice activity detection
     this._startAudioLevelDetection(participantId, stream);
-    
+
     return true;
   }
-  
+
   /**
    * Remove a remote participant's audio stream
    * @param {string} participantId - The remote participant's ID
@@ -1192,14 +1151,14 @@ class TranscriptionService {
     if (participantId && this.remoteAudioSources[participantId]) {
       console.log(`Removing remote audio for ${this.remoteAudioSources[participantId].name} (${participantId})`);
       delete this.remoteAudioSources[participantId];
-      
+
       // If this was the active speaker, clear that state
       if (this.activeSpeaker === participantId) {
         this.activeSpeaker = null;
       }
     }
   }
-  
+
   /**
    * Start monitoring audio levels to detect the active speaker
    * @param {string} participantId - The participant's ID
@@ -1212,20 +1171,20 @@ class TranscriptionService {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
-      
+
       // Create source from stream
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
-      
+
       // Set up the data array
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
-      
+
       // Store the analyzer and arrays in the participant data
       if (this.remoteAudioSources[participantId]) {
         this.remoteAudioSources[participantId].analyser = analyser;
         this.remoteAudioSources[participantId].dataArray = dataArray;
-        
+
         // Start the detection loop
         this._detectAudioLevel(participantId);
       }
@@ -1233,7 +1192,7 @@ class TranscriptionService {
       console.error('Error setting up audio level detection:', err);
     }
   }
-  
+
   /**
    * Continuously detect audio levels to determine active speaker
    * @param {string} participantId - The participant's ID
@@ -1241,40 +1200,40 @@ class TranscriptionService {
    */
   _detectAudioLevel(participantId) {
     if (!this.remoteAudioSources[participantId]) return;
-    
+
     const participant = this.remoteAudioSources[participantId];
     const { analyser, dataArray } = participant;
-    
+
     // Get audio data
     analyser.getByteFrequencyData(dataArray);
-    
+
     // Calculate average level
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) {
       sum += dataArray[i];
     }
     const avgLevel = sum / dataArray.length;
-    
+
     // Store the level
     participant.audioLevel = avgLevel;
-    
+
     // If level is above threshold, mark as active
     const AUDIO_THRESHOLD = 20;
     if (avgLevel > AUDIO_THRESHOLD) {
       participant.lastActive = Date.now();
-      
+
       // Set as active speaker if not already and level is significant
       if (this.activeSpeaker !== participantId && avgLevel > 30) {
         this._setActiveSpeaker(participantId);
       }
     }
-    
+
     // Continue the detection if still transcribing
     if (this.isTranscribing) {
       requestAnimationFrame(() => this._detectAudioLevel(participantId));
     }
   }
-  
+
   /**
    * Set the active speaker for transcription
    * @param {string} participantId - The participant's ID
@@ -1286,17 +1245,17 @@ class TranscriptionService {
     if (this.lastSpeakerChange && now - this.lastSpeakerChange < 1000) {
       return;
     }
-    
+
     // Set the new active speaker
     this.activeSpeaker = participantId;
     this.lastSpeakerChange = now;
-    
+
     const participant = this.remoteAudioSources[participantId];
     if (participant) {
       // Update current speaker
       this.currentSpeakerId = participantId;
       this.currentSpeakerName = participant.name;
-      
+
       console.log(`Active speaker changed to ${participant.name} (${participantId})`);
     }
   }

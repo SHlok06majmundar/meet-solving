@@ -1,5 +1,7 @@
-import React from 'react';
 import { Box, Typography, CircularProgress, Button } from '@mui/material';
+
+
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 
@@ -7,16 +9,16 @@ import { useEffect } from 'react';
 const ShareRedirect = () => {
   const { meetingId } = useParams();
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     // Small delay to show loading before redirect
     const timer = setTimeout(() => {
       navigate(`/meet/${meetingId}`);
     }, 1500);
-    
+
     return () => clearTimeout(timer);
   }, [meetingId, navigate]);
-  
+
   return (
     <Box
       sx={{
@@ -31,27 +33,27 @@ const ShareRedirect = () => {
         p: 3
       }}
     >
-      <CircularProgress 
-        size={60} 
-        sx={{ 
+      <CircularProgress
+        size={60}
+        sx={{
           color: 'white',
           mb: 3
-        }} 
+        }}
       />
-      <Typography 
-        variant="h4" 
-        sx={{ 
-          color: 'white', 
+      <Typography
+        variant="h4"
+        sx={{
+          color: 'white',
           mb: 2,
           fontWeight: 'bold'
         }}
       >
         Joining Meeting...
       </Typography>
-      <Typography 
-        variant="body1" 
-        sx={{ 
-          color: 'rgba(255,255,255,0.8)', 
+      <Typography
+        variant="body1"
+        sx={{
+          color: 'rgba(255,255,255,0.8)',
           mb: 4,
           maxWidth: '500px'
         }}

@@ -1,12 +1,13 @@
-import React from 'react';
 import { Box, Typography, Container } from '@mui/material';
-import { motion } from 'framer-motion';
-import {
-  Videocam,
-  Chat,
-  Security,
-} from '@mui/icons-material';
+
+
+import { Videocam, Chat, Security } from '@mui/icons-material';
+
+
 import GlassCard from './GlassCard';
+import { motion, useReducedMotion } from 'framer-motion';
+
+
 
 const features = [
   {
@@ -27,6 +28,7 @@ const features = [
 ];
 
 const FeaturesSection = () => {
+  const reducedMotion = useReducedMotion();
   return (
     <Box
       sx={{
@@ -40,7 +42,7 @@ const FeaturesSection = () => {
         <Box sx={{ textAlign: 'center', mb: { xs: 6, md: 8 } }}>
           <Typography
             component={motion.p}
-            initial={{ opacity: 0, y: 15 }}
+            initial={reducedMotion ? false : { opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
@@ -57,7 +59,7 @@ const FeaturesSection = () => {
           </Typography>
           <Typography
             component={motion.h2}
-            initial={{ opacity: 0, y: 20 }}
+            initial={reducedMotion ? false : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, delay: 0.1 }}
@@ -86,7 +88,7 @@ const FeaturesSection = () => {
             <GlassCard
               key={feature.title}
               component={motion.div}
-              initial={{ opacity: 0, y: 20 }}
+              initial={reducedMotion ? false : { opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-50px' }}
               transition={{ duration: 0.6, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
@@ -112,7 +114,7 @@ const FeaturesSection = () => {
 
               {/* Content */}
               <Typography
-                variant="h6"
+                component="h3" variant="h6"
                 sx={{
                   fontWeight: 700,
                   mb: 1,
@@ -126,7 +128,7 @@ const FeaturesSection = () => {
               <Typography
                 sx={{
                   color: 'var(--text-secondary)',
-                  fontSize: '0.92rem',
+                  fontSize: '1rem',
                   lineHeight: 1.6,
                   fontWeight: 400,
                 }}

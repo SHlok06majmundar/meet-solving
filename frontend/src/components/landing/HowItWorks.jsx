@@ -1,7 +1,11 @@
-import React from 'react';
 import { Box, Typography, Container, Stack } from '@mui/material';
-import { motion } from 'framer-motion';
+
+
+
 import { Videocam, AutoAwesome, CheckCircleOutline } from '@mui/icons-material';
+
+
+import { motion } from 'framer-motion';
 
 const steps = [
   {

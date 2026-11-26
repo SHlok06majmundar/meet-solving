@@ -8,10 +8,17 @@ const {
 } = require('../controllers/aiController');
 
 const router = express.Router();
+const { rateLimit } = require('express-rate-limit');
+const { validateBody } = require('../middleware/validation');
+const { requireMeetingAccess } = require('../services/accessService');
+const { admitAudio, requireMatchingAudioMeeting } = require('../middleware/audioAdmission');
+const aiLimit = rateLimit({ windowMs: 60000, limit: 20, keyGenerator: req => req.auth.userId, standardHeaders: 'draft-8', legacyHeaders: false });
 
-router.post('/api/transcribe-whisper', upload.single('audio'), transcribeWhisper);
-router.post('/api/ai-insights', getAiInsights);
-router.post('/api/ai-chat', getAiChatAnswer);
-router.post('/api/ai-brief', getMeetingBrief);
+router.post('/api/transcribe-whisper', aiLimit, admitAudio, upload.single('audio'), validateBody, requireMatchingAudioMeeting, (req, res, next) => {
+  Promise.resolve(transcribeWhisper(req, res, next)).catch(next).finally(() => req.audioLease.release());
+});
+router.post('/api/ai-insights', aiLimit, validateBody, requireMeetingAccess, getAiInsights);
+router.post('/api/ai-chat', aiLimit, validateBody, requireMeetingAccess, getAiChatAnswer);
+router.post('/api/ai-brief', aiLimit, validateBody, getMeetingBrief);
 
 module.exports = router;

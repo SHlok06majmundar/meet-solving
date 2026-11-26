@@ -1,53 +1,39 @@
 const express = require('express');
-const { NODE_ENV, ALLOWED_ORIGINS } = require('./config/env');
+const helmet = require('helmet');
+const { rateLimit } = require('express-rate-limit');
+const { ALLOWED_ORIGINS } = require('./config/env');
+const { requireAuth } = require('./middleware/auth');
+const { requestContext, errorHandler } = require('./middleware/errors');
 const routes = require('./routes');
 
-const app = express();
+function createApp({ authenticate = requireAuth } = {}) {
+  const app = express();
+  app.disable('x-powered-by');
+  app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS) || false);
+  app.use(requestContext, helmet());
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    res.vary('Origin');
+    if (origin && !ALLOWED_ORIGINS.includes(origin)) return res.status(403).json({ error: 'Origin is not allowed' });
+    if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Meeting-ID');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+  });
+  app.use(rateLimit({ windowMs: 60000, limit: 6000, standardHeaders: 'draft-8', legacyHeaders: false }));
+  app.use(express.json({ limit: '256kb' }));
+  const userLimit = rateLimit({ windowMs: 60000, limit: 600, keyGenerator: req => req.auth.userId, standardHeaders: 'draft-8', legacyHeaders: false });
+  app.use('/api', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    if (['/status', '/ready'].includes(req.path) && req.method === 'GET') return next();
+    return authenticate(req, res, error => error ? next(error) : userLimit(req, res, next));
+  });
+  app.use('/', routes);
+  app.use((req, res) => res.status(404).json({ error: 'Endpoint not found', requestId: req.id }));
+  app.use(errorHandler);
+  return app;
+}
 
-app.use((req, res, next) => {
-	console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-	next();
-});
-
-app.use((req, res, next) => {
-	const origin = req.headers.origin;
-	const isAllowedOrigin = (value) => {
-		if (!value) return true;
-
-		if (NODE_ENV === 'development') return true;
-
-		return ALLOWED_ORIGINS.some(allowed => {
-			if (allowed === '*') return true;
-			if (allowed === value) return true;
-
-			// Support wildcard origins such as https://*.vercel.app
-			if (allowed.includes('*')) {
-				const pattern = new RegExp('^' + allowed
-					.replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-					.replace(/\*/g, '.*') + '$');
-				return pattern.test(value);
-			}
-
-			return false;
-		});
-	};
-
-	if (isAllowedOrigin(origin)) {
-		res.header('Access-Control-Allow-Origin', origin || '*');
-		res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-		res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-		res.header('Access-Control-Allow-Credentials', 'true');
-	}
-
-	if (req.method === 'OPTIONS') {
-		return res.status(200).end();
-	}
-
-	return next();
-});
-
-app.use(express.json());
-
-app.use('/', routes);
-
-module.exports = app;
+module.exports = createApp();
+module.exports.createApp = createApp;

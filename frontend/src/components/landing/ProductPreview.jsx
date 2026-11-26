@@ -1,308 +1,234 @@
-import React from 'react';
-import { Box, Typography, Container, Stack, Chip } from '@mui/material';
-import { motion } from 'framer-motion';
+import { Box, Container, Typography } from "@mui/material";
 import {
-  Insights,
-  Sync,
-  Download,
-  FiberManualRecord,
-  AutoAwesome,
-  Summarize,
-  Analytics,
-  GraphicEq,
-  Chat,
-  AssignmentTurnedIn,
-} from '@mui/icons-material';
+  CheckRounded,
+  GraphicEqRounded,
+  NotesRounded,
+  VideocamRounded,
+} from "@mui/icons-material";
 
-const capabilityPills = [
-  { label: 'Action Center', icon: <Insights sx={{ fontSize: 16 }} /> },
-  { label: 'Productivity Score', icon: <Analytics sx={{ fontSize: 16 }} /> },
-  { label: 'Smart Highlights', icon: <AutoAwesome sx={{ fontSize: 16 }} /> },
-  { label: 'Live', icon: <FiberManualRecord sx={{ fontSize: 10, color: '#22c55e' }} /> },
-];
-
-const statusRows = [
-  {
-    label: 'Session metrics',
-    value: 'Action Center + Productivity Score + Smart Highlights',
-    icon: <Analytics sx={{ fontSize: 16 }} />,
-  },
-  {
-    label: 'Source',
-    value: 'Transcript + context',
-    icon: <GraphicEq sx={{ fontSize: 16 }} />,
-  },
-  {
-    label: 'AI extraction status',
-    value: 'Auto',
-    icon: <Sync sx={{ fontSize: 16 }} />,
-  },
-  {
-    label: 'Export',
-    value: 'Post-meeting report',
-    icon: <Download sx={{ fontSize: 16 }} />,
-  },
-];
-
-const capabilityCards = [
-  {
-    title: 'Live Transcript',
-    description: 'Reliable speech-to-text with speaker separation and searchable history.',
-    icon: <GraphicEq sx={{ fontSize: 20 }} />,
-  },
-  {
-    title: 'Ask Nexus',
-    description: 'Ask for decisions, blockers, and summaries directly from meeting context.',
-    icon: <Chat sx={{ fontSize: 20 }} />,
-  },
-  {
-    title: 'Decision Capture',
-    description: 'Automatically detect owners, next steps, and deadlines in real time.',
-    icon: <AssignmentTurnedIn sx={{ fontSize: 20 }} />,
-  },
-];
-
-const ProductPreview = () => {
+export default function ProductPreview() {
   return (
     <Box
-      sx={{
-        py: { xs: 10, md: 14 },
-        backgroundColor: 'var(--bg-dark)',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
+      component="section"
+      aria-labelledby="preview-heading"
+      sx={{ py: { xs: 7, md: 10 }, borderBlock: "1px solid var(--bg-border)" }}
     >
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: 'radial-gradient(var(--bg-border) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-          opacity: 0.08,
-        }}
-      />
-
-      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
-        <Box sx={{ textAlign: 'center', mb: { xs: 5, md: 7 } }}>
+      <Container maxWidth="lg">
+        <Box
+          sx={{
+            textAlign: "center",
+            mb: { xs: 4, md: 6 },
+            maxWidth: 640,
+            mx: "auto",
+          }}
+        >
+          <Typography className="section-label" sx={{ mb: 2 }}>
+            One connected workspace
+          </Typography>
           <Typography
-            component={motion.p}
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
+            component="h2"
+            id="preview-heading"
             sx={{
-              color: 'var(--text-secondary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.15em',
+              fontSize: { xs: "1.875rem", md: "2.75rem" },
+              fontWeight: 700,
+              letterSpacing: "-0.04em",
               mb: 2,
-              fontSize: '0.85rem',
-              fontWeight: 600,
             }}
           >
-            Live Session Intelligence
+            Stay present. Keep the next steps.
           </Typography>
-          <Typography
-            component={motion.h2}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            variant="h2"
-            sx={{
-              fontWeight: 800,
-              fontSize: { xs: '1.8rem', md: '2.5rem' },
-              fontFamily: 'var(--font-heading)',
-              color: 'var(--text-primary)',
-              lineHeight: 1.2,
-            }}
-          >
-            Operations-grade <span style={{ color: 'var(--text-muted)' }}>meeting view.</span>
-          </Typography>
-          <Typography
-            component={motion.p}
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            sx={{
-              color: 'var(--text-secondary)',
-              fontSize: { xs: '0.95rem', md: '1rem' },
-              mt: 2,
-              maxWidth: 620,
-              mx: 'auto',
-            }}
-          >
-            This page shows capability states. Real values are generated during active meetings.
+          <Typography color="text.secondary">
+            Bring video, captions, and useful meeting notes into one focused
+            space.
           </Typography>
         </Box>
-
         <Box
-          component={motion.div}
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          component="figure"
           sx={{
-            maxWidth: 980,
-            mx: 'auto',
-            borderRadius: 'var(--card-radius)',
-            border: '1px solid var(--bg-border)',
-            backgroundColor: 'var(--bg-elevated)',
-            overflow: 'hidden',
-            boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+            m: 0,
+            border: "1px solid var(--bg-border)",
+            borderRadius: { xs: 2, md: 4 },
+            bgcolor: "var(--bg-surface)",
+            overflow: "hidden",
+            boxShadow: "var(--shadow-soft)",
           }}
         >
           <Box
             sx={{
-              px: 3,
-              py: 2,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              borderBottom: '1px solid var(--bg-border)',
-              backgroundColor: 'var(--bg-dark)',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 2,
+              p: { xs: 2, md: 2.5 },
+              borderBottom: "1px solid var(--bg-border)",
             }}
           >
-            <Summarize sx={{ fontSize: 18, color: 'var(--text-muted)' }} />
-            <Typography
-              sx={{
-                fontSize: '0.82rem',
-                color: 'var(--text-secondary)',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-              }}
-            >
-              Nexus Session Intelligence Console
-            </Typography>
-            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <FiberManualRecord sx={{ fontSize: 8, color: '#22c55e' }} />
-              <Typography sx={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 600 }}>
-                LIVE
-              </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <VideocamRounded sx={{ color: "var(--color-primary)" }} />
+              <Typography fontWeight={700}>Design review</Typography>
             </Box>
+            <Typography variant="body2" color="text.secondary">
+              Workspace preview
+            </Typography>
           </Box>
-
-          <Stack direction={{ xs: 'column', md: 'row' }} sx={{ minHeight: 390 }}>
-            <Box
-              sx={{
-                flex: 1.15,
-                p: { xs: 2, md: 3 },
-                borderRight: { md: '1px solid var(--bg-border)' },
-                borderBottom: { xs: '1px solid var(--bg-border)', md: 'none' },
-              }}
-            >
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }}>
-                {capabilityPills.map((item, i) => (
-                  <Chip
-                    key={item.label}
-                    component={motion.div}
-                    initial={{ opacity: 0, y: 8 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.35, delay: 0.2 + i * 0.08 }}
-                    icon={item.icon}
-                    label={item.label}
-                    sx={{
-                      height: 30,
-                      borderRadius: '999px',
-                      backgroundColor: 'var(--bg-dark)',
-                      border: '1px solid var(--bg-border)',
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      letterSpacing: '0.02em',
-                    }}
-                  />
-                ))}
-              </Stack>
-
-              <Stack spacing={1.3}>
-                {statusRows.map((row, i) => (
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "minmax(0, 1fr)",
+                md: "minmax(0, 1.4fr) minmax(0, 1fr)",
+              },
+            }}
+          >
+            <Box sx={{ p: { xs: 2, md: 3 }, minWidth: 0 }}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: { xs: 1.5, md: 2 },
+                }}
+              >
+                {[
+                  ["A", "Alex", "var(--accent-muted)"],
+                  ["J", "Jamie", "var(--bg-surface)"],
+                ].map(([initial, name, background]) => (
                   <Box
-                    key={row.label}
-                    component={motion.div}
-                    initial={{ opacity: 0, x: -10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.35, delay: 0.35 + i * 0.1 }}
+                    key={name}
                     sx={{
-                      p: 1.5,
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--bg-border)',
-                      backgroundColor: 'var(--bg-dark)',
+                      aspectRatio: "1 / 1",
+                      position: "relative",
+                      display: "grid",
+                      placeItems: "center",
+                      borderRadius: 2,
+                      bgcolor: "var(--bg-elevated)",
+                      border: "1px solid var(--bg-border)",
                     }}
                   >
-                    <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 0.6 }}>
-                      <Box sx={{ color: 'var(--text-muted)', display: 'grid', placeItems: 'center' }}>{row.icon}</Box>
-                      <Typography
-                        sx={{
-                          fontSize: '0.73rem',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.1em',
-                          color: 'var(--text-secondary)',
-                        }}
-                      >
-                        {row.label}
-                      </Typography>
-                    </Stack>
-                    <Typography sx={{ fontSize: '0.84rem', color: 'var(--text-primary)', fontWeight: 600 }}>
-                      {row.value}
+                    <Box
+                      sx={{
+                        width: { xs: 56, sm: 84 },
+                        height: { xs: 56, sm: 84 },
+                        borderRadius: "50%",
+                        display: "grid",
+                        placeItems: "center",
+                        bgcolor: background,
+                        color: "var(--text-primary)",
+                        fontSize: { xs: "1.5rem", md: "2rem" },
+                        fontWeight: 600,
+                      }}
+                    >
+                      {initial}
+                    </Box>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        position: "absolute",
+                        bottom: 12,
+                        left: 12,
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      {name}
                     </Typography>
                   </Box>
                 ))}
-              </Stack>
-
-              <Typography sx={{ mt: 2, fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                This page shows capability states. Real values are generated during active meetings.
-              </Typography>
-            </Box>
-
-            <Box
-              sx={{
-                flex: 0.85,
-                p: { xs: 2, md: 3 },
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1.5,
-              }}
-            >
-              {capabilityCards.map((item, i) => (
-                <Box
-                  key={item.title}
-                  component={motion.div}
-                  initial={{ opacity: 0, x: 12 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.35, delay: 0.45 + i * 0.12 }}
-                  sx={{
-                    p: 2,
-                    borderRadius: 'var(--radius-md)',
-                    backgroundColor: 'var(--bg-dark)',
-                    border: '1px solid var(--bg-border)',
-                  }}
-                >
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                    <Box sx={{ color: 'var(--text-primary)', display: 'grid', placeItems: 'center' }}>{item.icon}</Box>
-                    <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                      {item.title}
-                    </Typography>
-                  </Stack>
-                  <Typography sx={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-                    {item.description}
+              </Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 1.5,
+                  p: 2,
+                  mt: 2,
+                  borderRadius: 2,
+                  bgcolor: "var(--bg-elevated)",
+                  alignItems: "flex-start",
+                }}
+              >
+                <GraphicEqRounded
+                  sx={{ color: "var(--color-primary)", flexShrink: 0 }}
+                />
+                <Box>
+                  <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>
+                    Captions, close to the conversation
+                  </Typography>
+                  <Typography color="text.secondary">
+                    “Let’s keep the first experience simple and make the next
+                    step clear.”
                   </Typography>
                 </Box>
-              ))}
+              </Box>
             </Box>
-          </Stack>
+            <Box
+              sx={{
+                p: { xs: 2, md: 3 },
+                borderLeft: { md: "1px solid var(--bg-border)" },
+                borderTop: { xs: "1px solid var(--bg-border)", md: 0 },
+                minWidth: 0,
+              }}
+            >
+              <Box
+                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}
+              >
+                <NotesRounded sx={{ color: "var(--color-primary)" }} />
+                <Typography component="h3" fontWeight={700}>
+                  From discussion to direction
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  p: 2.5,
+                  border: "1px solid var(--bg-border)",
+                  borderRadius: 2,
+                  mb: 2,
+                }}
+              >
+                <Typography variant="body2" fontWeight={700} sx={{ mb: 1 }}>
+                  A shared decision
+                </Typography>
+                <Typography color="text.secondary">
+                  Keep the onboarding flow focused on one clear first action.
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  p: 2.5,
+                  border: "1px solid var(--bg-border)",
+                  borderRadius: 2,
+                }}
+              >
+                <Typography variant="body2" fontWeight={700} sx={{ mb: 1 }}>
+                  A practical next step
+                </Typography>
+                <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}>
+                  <CheckRounded
+                    sx={{ color: "var(--color-primary)", flexShrink: 0 }}
+                  />
+                  <Typography color="text.secondary">
+                    Review the updated prototype together.
+                  </Typography>
+                </Box>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
+                Review meeting insights with your team before turning them into
+                commitments.
+              </Typography>
+            </Box>
+          </Box>
+          <Box
+            component="figcaption"
+            sx={{
+              px: { xs: 2, md: 3 },
+              py: 2,
+              borderTop: "1px solid var(--bg-border)",
+              color: "var(--text-secondary)",
+              fontSize: ".875rem",
+            }}
+          >
+            Illustrative preview. Your meeting content appears during your
+            session.
+          </Box>
         </Box>
       </Container>
     </Box>
   );
-};
-
-export default ProductPreview;
+}

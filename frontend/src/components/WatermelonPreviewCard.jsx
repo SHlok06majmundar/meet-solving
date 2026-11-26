@@ -1,21 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  LinearProgress,
-  Paper,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { useEventCallback } from '../hooks/useEventCallback';
+import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Paper, Stack, Typography } from '@mui/material';
+
+
+
+
+
+
+
+
+
+
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import InsightsIcon from '@mui/icons-material/Insights';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { useAppTheme } from '../theme/AppThemeProvider';
+import { useEffect, useMemo, useState } from 'react';
+
+
+import { useAppTheme } from '../theme/themeContext';
 
 export default function WatermelonPreviewCard({ onOpenMeeting, recentMeetingsCount = 0 }) {
   const { mode } = useAppTheme();
@@ -30,7 +31,7 @@ export default function WatermelonPreviewCard({ onOpenMeeting, recentMeetingsCou
     ? (import.meta.env.VITE_LOCAL_API_URL || import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000')
     : (import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_LOCAL_API_URL || 'http://localhost:5000');
 
-  const fetchStatus = async () => {
+  const fetchStatus = useEventCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`${apiBase}/api/status`);
@@ -60,11 +61,11 @@ export default function WatermelonPreviewCard({ onOpenMeeting, recentMeetingsCou
     } finally {
       setLoading(false);
     }
-  };
+  });
 
   useEffect(() => {
     fetchStatus();
-  }, [apiBase]);
+  }, [apiBase, fetchStatus]);
 
   const liveData = useMemo(() => {
     const activeRooms = Number(serverStatus?.activeRooms || 0);

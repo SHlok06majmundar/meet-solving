@@ -1,30 +1,26 @@
+import { TranscriptWriter } from '../services/TranscriptWriter';
+import { useEventCallback } from '../hooks/useEventCallback';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  IconButton, 
-  Tooltip, 
-  Box,
-  Typography,
-  Drawer,
-  Paper,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Avatar,
-  CircularProgress,
-  Button,
-  Menu,
-  MenuItem,
-  Divider,
-  Chip,
-  TextField,
-  Tabs,
-  Tab,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions
-} from '@mui/material';
+import { IconButton, Tooltip, Box, Typography, Drawer, Paper, List, ListItem, ListItemText, ListItemAvatar, Avatar, CircularProgress, Button, Menu, MenuItem, Divider, Chip, TextField, Tabs, Tab } from '@mui/material';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
 import VoiceOverOffIcon from '@mui/icons-material/VoiceOverOff';
 import CloseIcon from '@mui/icons-material/Close';
@@ -35,9 +31,12 @@ import AutoGraphIcon from '@mui/icons-material/AutoGraph';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import QuizIcon from '@mui/icons-material/Quiz';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { io } from 'socket.io-client';
+
+
+
 import TranscriptionService from '../services/TranscriptionService';
-import { supabase } from '../config/supabase';
+import { useAuth } from '@clerk/react';
+import { useApi } from '../services/api';
 import {
   buildMeetingIntelligence,
   classifyTranscriptLine,
@@ -47,7 +46,7 @@ import {
 
 /**
  * TranscriptionButton component for handling live speech-to-text transcription
- * 
+ *
  * @param {Object} props - Component props
  * @param {string} props.localUserId - The local user's ID
  * @param {string} props.localUserName - The local user's name
@@ -57,7 +56,9 @@ import {
  * @param {Object} props.peerRefs - Reference to peer connections
  * @param {Function} props.onError - Error handler function
  */
-function TranscriptionButton({ localUserId, localUserName, micOn, localStream, peerRefs, onError, meetingId }) {
+function TranscriptionButton({ localUserId, localUserName, micOn, localStream, onError, meetingId }) {
+  const api = useApi();
+  const { userId: authenticatedUserId } = useAuth();
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [transcripts, setTranscripts] = useState([]);
@@ -74,111 +75,29 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isWhisperActive, setIsWhisperActive] = useState(false);
   const [resumeAfterMicOn, setResumeAfterMicOn] = useState(false);
-  
-  // Socket reference for sharing transcription data
+
   const socketRef = useRef(null);
-  const ownsSocketRef = useRef(false);
-
-  // Initialize socket connection for transcription sharing
   useEffect(() => {
-    const handleIncomingTranscription = (data) => {
-      console.log('Received transcription data:', data);
-
-      // Upsert remote chunks to support live interim caption updates.
-      setTranscripts(prev => {
-        const existingIndex = prev.findIndex(item => item.id === data.id);
-
-        if (existingIndex !== -1) {
-          const updated = [...prev];
-          updated[existingIndex] = {
-            ...updated[existingIndex],
-            ...data,
-            isRemote: true,
-            endTime: data.isFinal ? (data.endTime || new Date().toISOString()) : null,
-          };
-          return updated;
-        }
-
-        return [...prev, {
-          ...data,
-          isRemote: true,
-          endTime: data.isFinal ? (data.endTime || new Date().toISOString()) : null,
-        }];
-      });
+    let attachedSocket = null;
+    const receive = data => setTranscripts(previous => {
+      const index = previous.findIndex(item => item.id === data.id);
+      const item = { ...data, isRemote: data.speakerId !== authenticatedUserId, persisted: true };
+      if (index < 0) return [...previous, item].slice(-2000);
+      const next = [...previous];
+      next[index] = { ...next[index], ...item };
+      return next;
+    });
+    const attach = () => {
+      if (attachedSocket === window.meetingSocket) return;
+      attachedSocket?.off('transcription-data', receive);
+      attachedSocket = window.meetingSocket;
+      socketRef.current = attachedSocket;
+      attachedSocket?.on('transcription-data', receive);
     };
-
-    const attachSocketListener = (targetSocket) => {
-      if (!targetSocket) return;
-      targetSocket.off('transcription-data', handleIncomingTranscription);
-      targetSocket.on('transcription-data', handleIncomingTranscription);
-    };
-
-    const detachSocketListener = (targetSocket) => {
-      if (!targetSocket) return;
-      targetSocket.off('transcription-data', handleIncomingTranscription);
-    };
-
-    // Get socket from parent component or create new one
-    const getSocket = () => {
-      // Try to get socket from window (passed from Meet component)
-      if (window.meetingSocket) {
-        ownsSocketRef.current = false;
-        return window.meetingSocket;
-      }
-      
-      // Create new socket connection if needed
-      const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_LOCAL_API_URL || 'http://localhost:5000';
-      ownsSocketRef.current = true;
-      const fallbackSocket = io(API_BASE_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-      });
-
-      // Ensure fallback socket is in the room so transcription broadcasts work.
-      fallbackSocket.on('connect', () => {
-        if (meetingId) {
-          fallbackSocket.emit('join-room', {
-            meetingId,
-            username: localUserName || 'Guest'
-          });
-        }
-      });
-
-      return fallbackSocket;
-    };
-
-    socketRef.current = getSocket();
-    attachSocketListener(socketRef.current);
-
-    // If the meeting socket appears after mount, switch to it so all clients share one channel.
-    const socketMigrationInterval = setInterval(() => {
-      if (!window.meetingSocket || window.meetingSocket === socketRef.current) return;
-
-      const previousSocket = socketRef.current;
-      detachSocketListener(previousSocket);
-
-      socketRef.current = window.meetingSocket;
-      ownsSocketRef.current = false;
-      attachSocketListener(socketRef.current);
-
-      if (previousSocket) {
-        previousSocket.off('connect');
-        previousSocket.off('transcription-data');
-      }
-    }, 1000);
-
-    return () => {
-      clearInterval(socketMigrationInterval);
-      if (socketRef.current) {
-        detachSocketListener(socketRef.current);
-        if (ownsSocketRef.current) {
-          socketRef.current.disconnect();
-        }
-      }
-    };
-  }, [meetingId, localUserName]);
+    attach();
+    const timer = setInterval(attach, 500);
+    return () => { clearInterval(timer); attachedSocket?.off('transcription-data', receive); };
+  }, [meetingId, authenticatedUserId]);
 
   // Share transcription data with other users
   const shareTranscriptionData = (transcriptData) => {
@@ -193,7 +112,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         text: transcriptData.text?.substring(0, 50) + '...',
         isFinal: transcriptData.isFinal
       });
-      
+
       emitSocket.emit('transcription-data', {
         ...transcriptData,
         meetingId,
@@ -208,20 +127,22 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
   };
   const transcriptionServiceRef = useRef(new TranscriptionService());
   const lastSharedTranscriptsRef = useRef(new Map());
-  const lastPersistedTranscriptsRef = useRef(new Map());
+  const writerRef = useRef(null);
+  const persistenceWarnedRef = useRef(false);
   const liveCursorRef = useRef(null);
-  const pollCycleRef = useRef(0);
+
   const transcriptsEndRef = useRef(null);
-  const savedTranscriptIdsRef = useRef(new Set());
   const insightsDebounceRef = useRef(null);
   const whisperRecorderRef = useRef(null);
+  const whisperWantedRef = useRef(false);
+  const whisperTimerRef = useRef(null);
   const whisperAudioContextRef = useRef(null);
   const whisperMixedStreamRef = useRef(null);
   const whisperNetworkWarnedRef = useRef(false);
   const insightApiUnavailableRef = useRef(false);
   const backendAiConfiguredRef = useRef(null);
   const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_LOCAL_API_URL || 'http://localhost:5000';
-  const buildApiUrl = (path) => {
+  const buildApiUrl = useEventCallback((path) => {
     const base = (API_BASE_URL || '').replace(/\/+$/, '');
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
@@ -230,53 +151,8 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     }
 
     return `${base}${normalizedPath}`;
-  };
+  });
 
-  const persistTranscriptDirectlyToSupabase = async (item) => {
-    try {
-      const row = {
-        transcript_id: item.id,
-        meeting_id: meetingId,
-        user_id: item.speakerId || localUserId || null,
-        speaker_name: item.speakerName || localUserName || 'Unknown',
-        transcript_text: item.text,
-        source: item.source || 'browser-stt',
-        is_final: Boolean(item.isFinal),
-        created_at: item.startTime || new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data: updatedRows, error: updateError } = await supabase
-        .from('meeting_transcripts')
-        .update({
-          meeting_id: row.meeting_id,
-          user_id: row.user_id,
-          speaker_name: row.speaker_name,
-          transcript_text: row.transcript_text,
-          source: row.source,
-          is_final: row.is_final,
-          updated_at: row.updated_at,
-        })
-        .eq('transcript_id', row.transcript_id)
-        .select('transcript_id');
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      if (!updatedRows || updatedRows.length === 0) {
-        const { error: insertError } = await supabase
-          .from('meeting_transcripts')
-          .insert(row);
-
-        if (insertError) {
-          throw insertError;
-        }
-      }
-    } catch (error) {
-      console.error('Direct Supabase transcript upsert failed:', error);
-    }
-  };
   const quickPrompts = useMemo(() => getQuickPrompts(), []);
   const intelligence = useMemo(() => buildMeetingIntelligence(transcripts), [transcripts]);
   const effectiveIntelligence = serverIntelligence || intelligence;
@@ -292,45 +168,28 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
       list.findIndex(option => option.code === item.code) === index
     );
   }, []);
-  
+
   // Check if speech recognition is supported
   const isSupported = transcriptionServiceRef.current.isSpeechRecognitionSupported();
-  
+
   // Clean up on component unmount
   useEffect(() => {
+    const service = transcriptionServiceRef.current;
     return () => {
-      if (transcriptionServiceRef.current.isActive()) {
-        transcriptionServiceRef.current.stopTranscription();
+      whisperWantedRef.current = false;
+      clearTimeout(whisperTimerRef.current);
+      if (service.isActive()) {
+        service.stopTranscription();
       }
       if (whisperRecorderRef.current && whisperRecorderRef.current.state !== 'inactive') {
         whisperRecorderRef.current.stop();
       }
     };
   }, []);
-  
+
   // Build a stable local speaker identity for transcription sessions.
-  const effectiveLocalUserId = localUserId || 'local-user';
+  const effectiveLocalUserId = authenticatedUserId;
   const effectiveLocalUserName = localUserName || 'You';
-
-  // Prepare remote peers data if available
-  const getRemotePeersData = () => {
-    if (!peerRefs || !peerRefs.current) return [];
-
-    return peerRefs.current
-      .map(peer => {
-        let peerStream = peer.stream;
-        if (!peerStream && peer.peer) {
-          peerStream = transcriptionServiceRef.current.getRemoteStreamFromPeer(peer.peer);
-        }
-
-        return {
-          id: peer.id,
-          username: peer.username || 'Remote User',
-          stream: peerStream
-        };
-      })
-      .filter(peer => peer.id && peer.stream);
-  };
 
   const cleanupWhisperCaptureResources = () => {
     if (whisperMixedStreamRef.current) {
@@ -359,7 +218,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
 
     if (!AudioContextImpl) {
       const audioTracks = localStream.getAudioTracks().filter(track => track.enabled);
-      return audioTracks.length > 0 ? new MediaStream(audioTracks) : null;
+      return audioTracks.length > 0 ? new MediaStream(audioTracks.map(track => track.clone())) : null;
     }
 
     const audioContext = new AudioContextImpl();
@@ -394,7 +253,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     return destination.stream;
   };
 
-  const startTranscriptionSession = () => {
+  const startTranscriptionSession = useEventCallback(() => {
     // Check if microphone is enabled before starting transcription
     if (!micOn) {
       onError?.('Please turn on your microphone before starting transcription.');
@@ -417,6 +276,11 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
       return false;
     }
 
+    if (!isSupported) {
+      const started = startWhisperCapture();
+      if (started) { setIsTranscribing(true); setResumeAfterMicOn(false); setIsDrawerOpen(true); }
+      return started;
+    }
     const success = transcriptionServiceRef.current.startTranscription(
       effectiveLocalUserId,
       effectiveLocalUserName,
@@ -438,6 +302,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
               ...existing,
               ...item,
               isRemote: false,
+              persisted: false,
             });
           });
 
@@ -466,14 +331,19 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     if (success) {
       setIsTranscribing(true);
       setResumeAfterMicOn(false);
-      startWhisperCapture();
       setIsDrawerOpen(true);
       return true;
     }
 
     onError?.('Failed to start transcription. Please check your microphone permissions.');
     return false;
-  };
+  });
+
+  const stopTranscriptionSession = useEventCallback(() => {
+    transcriptionServiceRef.current.stopTranscription();
+    stopWhisperCapture();
+    setIsTranscribing(false);
+  });
 
   // Monitor microphone state and stop transcription if it's turned off
   useEffect(() => {
@@ -481,7 +351,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     if (localStream) {
       transcriptionServiceRef.current.updateMediaStream(localStream);
     }
-    
+
     // If mic is turned off while transcribing, stop transcription
     if (isTranscribing && !micOn) {
       console.log('Microphone turned off, stopping transcription');
@@ -489,7 +359,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
       setResumeAfterMicOn(true);
       onError?.('Transcription stopped because microphone was turned off.');
     }
-  }, [micOn, isTranscribing, localStream, onError]);
+  }, [micOn, isTranscribing, localStream, onError, stopTranscriptionSession]);
 
   // Auto-resume transcription once microphone is turned back on.
   useEffect(() => {
@@ -498,12 +368,12 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     if (resumed) {
       onError?.('Microphone restored. Transcription resumed.', 'info');
     }
-  }, [resumeAfterMicOn, micOn, localStream]);
-  
+  }, [resumeAfterMicOn, micOn, localStream, onError, startTranscriptionSession]);
+
   // Monitor audio tracks in the local stream
   useEffect(() => {
     if (!localStream) return;
-    
+
     const handleTrackEnabled = (event) => {
       // If mic was re-enabled while transcription is active, restart it
       if (isTranscribing && event.target.kind === 'audio' && event.target.enabled) {
@@ -511,21 +381,21 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         transcriptionServiceRef.current.restartWithStream(localStream);
       }
     };
-    
+
     const audioTracks = localStream.getAudioTracks();
     audioTracks.forEach(track => {
       track.addEventListener('enabled', handleTrackEnabled);
     });
-    
+
     return () => {
       audioTracks.forEach(track => {
         track.removeEventListener('enabled', handleTrackEnabled);
       });
     };
   }, [localStream, isTranscribing]);
-  
+
   // Browser speech recognition should only use local microphone for speaker attribution.
-  
+
   // Auto scroll to the bottom when transcripts update
   useEffect(() => {
     if (transcriptsEndRef.current && isDrawerOpen) {
@@ -559,6 +429,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
             endTime: row.isFinal ? (row.updatedAt || row.timestamp || new Date().toISOString()) : null,
             source: row.source || 'db-sync',
             isRemote: row.speakerId !== effectiveLocalUserId,
+            persisted: true,
           };
 
           if (existingIndex >= 0) {
@@ -575,18 +446,20 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
       });
     };
 
+    let polling = false;
     const pollLiveTranscripts = async () => {
+      if (polling || isDisposed) return;
+      polling = true;
       try {
+        for (let page = 0; page < 10 && !isDisposed; page++) {
         const params = new URLSearchParams();
-        pollCycleRef.current += 1;
-        const forceFullResync = pollCycleRef.current % 8 === 0;
 
-        if (liveCursorRef.current && !forceFullResync) {
+        if (liveCursorRef.current) {
           params.set('since', liveCursorRef.current);
         }
         params.set('limit', '250');
 
-        const response = await fetch(buildApiUrl(`/api/meetings/${meetingId}/transcripts?${params.toString()}`));
+        const response = await api(buildApiUrl(`/api/meetings/${meetingId}/transcripts?${params.toString()}`));
         if (!response.ok) return;
 
         const payload = await response.json();
@@ -597,12 +470,14 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         }
 
         mergeLiveRows(payload.transcripts || []);
+        if (!payload.hasMore) break;
+        }
       } catch {
-        // Ignore transient polling failures to avoid user-visible console noise.
-      }
+        // Retry transient polling failures on the next cycle.
+      } finally { polling = false; }
     };
 
-    const getPollIntervalMs = () => (document.visibilityState === 'visible' ? 450 : 1200);
+    const getPollIntervalMs = () => (document.visibilityState === 'visible' ? 2000 : 10000);
 
     pollLiveTranscripts();
     let intervalId = setInterval(pollLiveTranscripts, getPollIntervalMs());
@@ -619,58 +494,33 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [meetingId, API_BASE_URL, effectiveLocalUserId]);
+  }, [meetingId, API_BASE_URL, effectiveLocalUserId, api, buildApiUrl]);
 
+  const reportPersistenceError = useEventCallback(() => {
+    if (!persistenceWarnedRef.current) {
+      persistenceWarnedRef.current = true;
+      onError?.('Transcript saving is delayed. Reconnecting automatically; you can also export your captions.', 'warning');
+    }
+  });
   useEffect(() => {
-    const persistedCandidates = transcripts.filter(item => item?.id && item?.text?.trim());
-    if (persistedCandidates.length === 0 || !meetingId) return;
-
-    persistedCandidates.forEach(async (item) => {
-      const signature = `${item.text.trim()}::${item.isFinal ? 'final' : 'interim'}`;
-      const previousSignature = lastPersistedTranscriptsRef.current.get(item.id);
-      if (previousSignature === signature) return;
-
-      lastPersistedTranscriptsRef.current.set(item.id, signature);
-
-      if (item.isFinal) {
-        savedTranscriptIdsRef.current.add(item.id);
-      }
-
-      try {
-        const response = await fetch(buildApiUrl('/api/transcripts'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            meetingId,
-            transcriptId: item.id,
-            userId: item.speakerId || localUserId,
-            speakerName: item.speakerName || localUserName,
-            text: item.text,
-            source: item.source || 'browser-stt',
-            timestamp: item.startTime,
-            isFinal: Boolean(item.isFinal),
-          })
-        });
-
-        let persistedViaBackend = false;
-        if (response.ok) {
-          try {
-            const payload = await response.json();
-            persistedViaBackend = payload?.storage?.source === 'supabase';
-          } catch {
-            persistedViaBackend = false;
-          }
-        }
-
-        // If backend did not confirm Supabase persistence, write directly from frontend.
-        if (!persistedViaBackend) {
-          await persistTranscriptDirectlyToSupabase(item);
-        }
-      } catch {
-        await persistTranscriptDirectlyToSupabase(item);
-      }
-    });
-  }, [transcripts, meetingId, localUserId, localUserName, API_BASE_URL]);
+    const writer = new TranscriptWriter(async item => {
+      const response = await api('/api/transcripts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meetingId, transcriptId: item.id,
+          speakerName: item.speakerName || localUserName, text: item.text,
+          source: item.source || 'browser-stt', timestamp: item.startTime, isFinal: Boolean(item.isFinal) }),
+      });
+      if (!response.ok) throw new Error('Transcript was not saved');
+      persistenceWarnedRef.current = false;
+    }, reportPersistenceError);
+    writerRef.current = writer;
+    return () => { writer.close(); writerRef.current = null; };
+  }, [meetingId, localUserName, api, reportPersistenceError]);
+  useEffect(() => {
+    for (const item of transcripts) {
+      if (item?.id && item.text?.trim() && !item.isRemote && !item.persisted && item.speakerId === authenticatedUserId) writerRef.current?.enqueue(item);
+    }
+  }, [transcripts, authenticatedUserId, meetingId, localUserName, api]);
 
   useEffect(() => {
     const finalTranscripts = transcripts.filter(item => item?.isFinal);
@@ -684,7 +534,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
       try {
         if (backendAiConfiguredRef.current === null) {
           try {
-            const statusResponse = await fetch(buildApiUrl('/api/status'));
+            const statusResponse = await api(buildApiUrl('/api/status'));
             if (statusResponse.ok) {
               const statusPayload = await statusResponse.json();
               backendAiConfiguredRef.current = Boolean(
@@ -701,7 +551,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         }
 
         setIsAiLoading(true);
-        const response = await fetch(buildApiUrl('/api/ai-insights'), {
+        const response = await api(buildApiUrl('/api/ai-insights'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -751,8 +601,8 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         clearTimeout(insightsDebounceRef.current);
       }
     };
-  }, [transcripts, meetingId, API_BASE_URL, intelligence]);
-  
+  }, [transcripts, meetingId, API_BASE_URL, intelligence, api, buildApiUrl, onError]);
+
   /**
    * Toggle transcription state
    */
@@ -771,15 +621,19 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         formData.append('language', whisperLanguageHint);
       }
 
-      const response = await fetch(buildApiUrl('/api/transcribe-whisper'), {
+      const response = await api(buildApiUrl('/api/transcribe-whisper'), {
         method: 'POST',
+        headers: { 'X-Meeting-ID': meetingId },
         body: formData,
         // Add timeout to prevent hanging
         signal: AbortSignal.timeout(10000) // 10 second timeout
       });
 
       if (!response.ok) {
-        // Keep browser transcription running silently when Whisper backend is unavailable.
+        if (!whisperNetworkWarnedRef.current) {
+          whisperNetworkWarnedRef.current = true;
+          onError?.('Server transcription is unavailable. Your meeting is still connected.', 'warning');
+        }
         return;
       }
 
@@ -792,14 +646,15 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         if (duplicate) return prev;
 
         const whisperTranscript = {
-          id: `whisper-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          id: payload.transcriptId,
           speakerId: effectiveLocalUserId,
           speakerName: effectiveLocalUserName,
           text,
           isFinal: true,
           startTime: new Date().toISOString(),
           endTime: new Date().toISOString(),
-          source: 'whisper'
+          source: 'whisper',
+          persisted: true
         };
 
         return [...prev, whisperTranscript];
@@ -812,39 +667,40 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
   };
 
   const startWhisperCapture = () => {
-    if (!localStream || !meetingId || !window.MediaRecorder) return;
-
+    if (!window.MediaRecorder) { onError?.('Server transcription is not supported in this browser.'); return false; }
     try {
-      cleanupWhisperCaptureResources();
-
-      const whisperStream = buildWhisperCaptureStream();
-      if (!whisperStream) return;
-
-      const recorder = new MediaRecorder(whisperStream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/webm'
-      });
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          pushWhisperChunk(event.data);
-        }
+      const stream = buildWhisperCaptureStream();
+      if (!stream) return false;
+      whisperWantedRef.current = true;
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(type => MediaRecorder.isTypeSupported(type));
+      const recordSegment = () => {
+        if (!whisperWantedRef.current) return;
+        // A fresh recorder makes every upload a complete independently decodable audio file.
+        const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+        whisperRecorderRef.current = recorder;
+        recorder.ondataavailable = event => { if (event.data?.size) void pushWhisperChunk(event.data); };
+        recorder.onstop = () => { if (whisperWantedRef.current) recordSegment(); };
+        recorder.onerror = () => {
+          whisperWantedRef.current = false;
+          onError?.('Audio capture stopped unexpectedly. Restart transcription to try again.');
+        };
+        recorder.start();
+        whisperTimerRef.current = setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, 7000);
       };
-
-      recorder.onerror = (event) => {
-        console.error('Whisper recorder error:', event.error);
-      };
-
-      recorder.start(7000);
-      whisperRecorderRef.current = recorder;
+      recordSegment();
       setIsWhisperActive(true);
+      return true;
     } catch (error) {
-      console.error('Failed to start Whisper capture:', error);
+      whisperWantedRef.current = false;
+      cleanupWhisperCaptureResources();
+      onError?.(error.message || 'Unable to start audio capture.');
+      return false;
     }
   };
 
   const stopWhisperCapture = () => {
+    whisperWantedRef.current = false;
+    clearTimeout(whisperTimerRef.current);
     if (whisperRecorderRef.current && whisperRecorderRef.current.state !== 'inactive') {
       whisperRecorderRef.current.stop();
     }
@@ -853,18 +709,13 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     cleanupWhisperCaptureResources();
   };
 
-  function stopTranscriptionSession() {
-    transcriptionServiceRef.current.stopTranscription();
-    stopWhisperCapture();
-    setIsTranscribing(false);
-  }
 
   const handleTranscriptionButtonClick = () => {
     if (!isSupported && !window.MediaRecorder) {
       onError?.('Speech recognition is not supported in your browser. Please try Chrome, Edge, or Safari.');
       return;
     }
-    
+
     if (isTranscribing) {
       // When transcription is running, this button controls panel visibility.
       setIsDrawerOpen(prev => !prev);
@@ -872,7 +723,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
       startTranscriptionSession();
     }
   };
-  
+
   /**
    * Handle language menu open
    */
@@ -880,7 +731,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     setLanguageAnchorEl(event.currentTarget);
     setIsLanguageMenuOpen(true);
   };
-  
+
   /**
    * Handle language menu close
    */
@@ -888,7 +739,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     setLanguageAnchorEl(null);
     setIsLanguageMenuOpen(false);
   };
-  
+
   /**
    * Handle language selection
    */
@@ -896,7 +747,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     transcriptionServiceRef.current.setLanguage(languageCode);
     handleLanguageMenuClose();
   };
-  
+
   /**
    * Clear all transcripts
    */
@@ -904,7 +755,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     transcriptionServiceRef.current.clearTranscripts();
     setTranscripts([]);
   };
-  
+
   /**
    * Handle closing export menu
    */
@@ -912,7 +763,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     setExportAnchorEl(null);
     setIsExportMenuOpen(false);
   };
-  
+
   /**
    * Export transcripts as file (txt, json, pdf)
    */
@@ -920,24 +771,24 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     try {
       setIsExporting(true);
       handleExportMenuClose();
-      
+
       // Show loading indicator for PDF generation
       if (format === 'pdf') {
         onError?.('Generating PDF transcript...', 'info');
       }
-      
+
       // Get blob from service
       const blobResult = transcriptionServiceRef.current.exportTranscripts(format, transcripts);
-      
+
       // Handle async (Promise) or sync (Blob) result
       const blob = blobResult instanceof Promise ? await blobResult : blobResult;
-      
+
       if (blob) {
         const now = new Date();
         const dateString = now.toISOString().replace(/[:.]/g, '-').substring(0, 19);
         const extension = format;
         const filename = `nexus-transcription-${dateString}.${extension}`;
-        
+
         // Create download link
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -945,16 +796,16 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         a.style.display = 'none';
         a.href = url;
         a.download = filename;
-        
+
         // Trigger download
         a.click();
-        
+
         // Clean up
         setTimeout(() => {
           document.body.removeChild(a);
           window.URL.revokeObjectURL(url);
         }, 100);
-        
+
         if (format === 'pdf') {
           onError?.('PDF transcript generated successfully!', 'success');
         }
@@ -966,13 +817,13 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
       setIsExporting(false);
     }
   };
-  
+
   // Determine the tooltip message based on state
   const getTooltipMessage = () => {
     if (!isSupported && !window.MediaRecorder) return "Transcription not supported in this browser";
     if (isTranscribing) return isDrawerOpen ? "Close transcription panel" : "Open transcription panel";
     if (!micOn) return "Microphone is off - Turn on microphone to enable transcription";
-    
+
     // Check audio tracks in local stream
     if (localStream) {
       const audioTracks = localStream.getAudioTracks();
@@ -983,7 +834,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         return "Microphone is muted - Unmute to enable transcription";
       }
     }
-    
+
     return "Start Transcription";
   };
 
@@ -1103,7 +954,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
     const askBackend = async () => {
       if (!meetingId) throw new Error('Missing meetingId');
 
-      const response = await fetch(buildApiUrl('/api/ai-chat'), {
+      const response = await api(buildApiUrl('/api/ai-chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1129,25 +980,25 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
       setAskAnswer(response);
     });
   };
-  
+
   return (
     <>
       <Tooltip title={getTooltipMessage()}>
         <span>
-          <IconButton
+          <IconButton aria-label={getTooltipMessage()}
             onClick={handleTranscriptionButtonClick}
             disabled={(!isSupported && !window.MediaRecorder) || (!isTranscribing && !micOn)}
-            sx={{ 
+            sx={{
               position: 'relative',
-              bgcolor: isTranscribing ? 'rgba(103, 58, 183, 0.1)' : (!micOn ? 'rgba(244, 67, 54, 0.05)' : 'rgba(33, 150, 243, 0.1)'), 
-              color: isTranscribing 
-                ? 'var(--color-primary)' 
-                : (!micOn ? 'rgba(244, 67, 54, 0.5)' : 'var(--color-secondary)'), 
+              bgcolor: isTranscribing ? 'rgba(103, 58, 183, 0.1)' : (!micOn ? 'rgba(244, 67, 54, 0.05)' : 'rgba(33, 150, 243, 0.1)'),
+              color: isTranscribing
+                ? 'var(--color-primary)'
+                : (!micOn ? 'rgba(244, 67, 54, 0.5)' : 'var(--color-secondary)'),
               borderRadius: 'var(--button-radius)',
               p: { xs: 1, sm: 1.5 },
               '&:hover': {
-                bgcolor: isTranscribing 
-                  ? 'rgba(103, 58, 183, 0.2)' 
+                bgcolor: isTranscribing
+                  ? 'rgba(103, 58, 183, 0.2)'
                   : (!micOn ? 'rgba(244, 67, 54, 0.1)' : 'rgba(33, 150, 243, 0.2)')
               },
               '&.Mui-disabled': {
@@ -1168,15 +1019,17 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
           </IconButton>
         </span>
       </Tooltip>
-      
+
       {/* Transcription Drawer */}
       <Drawer
         anchor="right"
+        slotProps={{ paper: { role: 'dialog', 'aria-modal': true, 'aria-labelledby': 'intelligence-heading' } }}
         open={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         sx={{
-          '& .MuiDrawer-paper': { 
-            width: { xs: '100%', sm: 400 },
+          '& .MuiDrawer-paper': {
+            width: { xs: '100%', sm: 460 },
+            height: '100dvh',
             maxWidth: '100%',
             boxSizing: 'border-box',
             p: 0,
@@ -1187,26 +1040,28 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         }}
       >
         {/* Drawer Header */}
-        <Box sx={{ 
-          p: 2, 
-          display: 'flex', 
+        <Box sx={{
+          p: 2,
+          display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid var(--border-color)', 
+          flexWrap: 'wrap',
+          gap: 1.5,
+          borderBottom: '1px solid var(--border-color)',
           bgcolor: isTranscribing ? 'rgba(103, 58, 183, 0.08)' : 'var(--surface-elevated)'
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', minWidth: 0 }}>
             {isTranscribing && (
               <CircularProgress size={20} sx={{ color: 'var(--color-primary)' }} />
             )}
-            <Typography variant="h6" fontWeight={600}>
+            <Typography id="intelligence-heading" component="h2" variant="h6" fontWeight={600} sx={{ fontSize: '1.125rem' }}>
               AI Meeting Intelligence
             </Typography>
             {isTranscribing && (
-              <Chip 
-                label="Active" 
-                size="small" 
-                color="primary" 
+              <Chip
+                label="Active"
+                size="small"
+                color="primary"
                 variant="outlined"
               />
             )}
@@ -1222,10 +1077,10 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
               />
             )}
           </Box>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', '& .MuiIconButton-root': { width: 44, height: 44 } }}>
             {isTranscribing && (
               <Tooltip title="Stop transcription">
-                <IconButton
+                <IconButton aria-label="Stop transcription"
                   size="small"
                   onClick={stopTranscriptionSession}
                   sx={{ color: 'var(--color-error)' }}
@@ -1235,7 +1090,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
               </Tooltip>
             )}
             <Tooltip title="Select language">
-              <IconButton 
+              <IconButton aria-label="Select language"
                 size="small"
                 onClick={handleLanguageMenuOpen}
                 sx={{ color: 'var(--color-secondary)' }}
@@ -1244,7 +1099,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
               </IconButton>
             </Tooltip>
             <Tooltip title="Clear transcripts">
-              <IconButton 
+              <IconButton aria-label="Clear transcripts"
                 size="small"
                 onClick={handleClearTranscripts}
                 disabled={transcripts.length === 0}
@@ -1254,7 +1109,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
               </IconButton>
             </Tooltip>
             <Tooltip title="Export transcripts">
-              <IconButton 
+              <IconButton aria-label="Export transcripts"
                 size="small"
                 onClick={(e) => {
                   setExportAnchorEl(e.currentTarget);
@@ -1267,7 +1122,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
               </IconButton>
             </Tooltip>
             <Tooltip title="Close">
-              <IconButton 
+              <IconButton aria-label="Close"
                 size="small"
                 onClick={() => setIsDrawerOpen(false)}
                 sx={{ ml: 1 }}
@@ -1277,9 +1132,9 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
             </Tooltip>
           </Box>
         </Box>
-        
+
         {/* Current Language Indicator */}
-        <Box 
+        <Box
           sx={{
             px: 2,
             py: 1,
@@ -1304,7 +1159,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
             size="small"
             variant="text"
             onClick={handleLanguageMenuOpen}
-            sx={{ 
+            sx={{
               color: 'var(--color-secondary)',
               textTransform: 'none',
               fontWeight: 500,
@@ -1314,11 +1169,14 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
             Change
           </Button>
         </Box>
-        
+
         <Tabs
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          aria-label="Meeting intelligence sections"
           value={activeTab}
           onChange={(event, value) => setActiveTab(value)}
-          variant="fullWidth"
           sx={{
             borderBottom: '1px solid var(--border-color)',
             '& .MuiTab-root': {
@@ -1339,14 +1197,14 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         </Tabs>
 
         {/* Content Panel */}
-        <Box sx={{ 
-          flex: 1, 
-          overflowY: 'auto', 
+        <Box sx={{
+          flex: 1,
+          overflowY: 'auto',
           height: 'calc(100% - 64px)',
           bgcolor: 'var(--surface-soft)'
         }}>
           {activeTab === 0 && transcripts.length === 0 ? (
-            <Box sx={{ 
+            <Box sx={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -1360,7 +1218,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
                 No transcriptions yet
               </Typography>
               <Typography variant="body2" color="var(--text-muted)" textAlign="center">
-                {isTranscribing 
+                {isTranscribing
                   ? "Start speaking to see real-time transcriptions"
                   : "Click the transcription button to start"
                 }
@@ -1383,7 +1241,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
                     new Date(transcript.startTime).toLocaleDateString() !==
                     new Date(transcripts[index-1].startTime).toLocaleDateString()
                   )) && (
-                    <Box sx={{ 
+                    <Box sx={{
                       textAlign: 'center',
                       py: 1,
                       px: 2,
@@ -1399,10 +1257,10 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
                       </Typography>
                     </Box>
                   )}
-                
-                  <ListItem 
-                    alignItems="flex-start" 
-                    sx={{ 
+
+                  <ListItem
+                    alignItems="flex-start"
+                    sx={{
                       opacity: transcript.isFinal ? 1 : 0.7,
                       bgcolor: transcript.isFinal ? style.background : 'rgba(103, 58, 183, 0.04)',
                       py: 1,
@@ -1411,10 +1269,10 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
                     }}
                   >
                     <ListItemAvatar>
-                      <Avatar 
-                        sx={{ 
-                          bgcolor: transcript.speakerId === localUserId 
-                            ? 'var(--color-primary)' 
+                      <Avatar
+                        sx={{
+                          bgcolor: transcript.speakerId === localUserId
+                            ? 'var(--color-primary)'
                             : 'var(--color-secondary)',
                           width: 35,
                           height: 35
@@ -1454,10 +1312,10 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
                         </Box>
                       }
                       secondary={
-                        <Typography 
-                          variant="body2" 
+                        <Typography
+                          variant="body2"
                           color="var(--text-primary)"
-                          sx={{ 
+                          sx={{
                             wordBreak: 'break-word',
                             lineHeight: 1.5,
                             fontWeight: transcript.isFinal ? 400 : 300
@@ -1684,7 +1542,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
             </Box>
           ) : null}
         </Box>
-        
+
         {/* Bottom controls */}
         <Box sx={{
           p: 2,
@@ -1693,7 +1551,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
           justifyContent: 'space-between',
           bgcolor: 'var(--surface-elevated)'
         }}>
-          <Button 
+          <Button
             variant="outlined"
             size="small"
             startIcon={<DeleteIcon />}
@@ -1714,7 +1572,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
                 setIsExportMenuOpen(true);
               }}
               disabled={transcripts.length === 0}
-              sx={{ 
+              sx={{
                 borderRadius: 'var(--button-radius)',
                 bgcolor: 'var(--color-primary)',
                 '&:hover': {
@@ -1727,7 +1585,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
           </Box>
         </Box>
       </Drawer>
-      
+
       {/* Language selection menu */}
       <Menu
         anchorEl={languageAnchorEl}
@@ -1742,8 +1600,8 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         </MenuItem>
         <Divider />
         {languageOptions.map(language => (
-          <MenuItem 
-            key={language.code} 
+          <MenuItem
+            key={language.code}
             onClick={() => handleLanguageSelect(language.code)}
             selected={transcriptionServiceRef.current.currentLanguage === language.code}
           >
@@ -1751,7 +1609,7 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
           </MenuItem>
         ))}
       </Menu>
-      
+
       {/* Export format menu */}
       <Menu
         anchorEl={exportAnchorEl}
@@ -1765,21 +1623,21 @@ function TranscriptionButton({ localUserId, localUserName, micOn, localStream, p
         </MenuItem>
         <Divider />
         <MenuItem onClick={() => handleExportTranscripts('txt')} disabled={isExporting}>
-          <ListItemText 
-            primary="Plain Text (.txt)" 
-            secondary="Simple text format" 
+          <ListItemText
+            primary="Plain Text (.txt)"
+            secondary="Simple text format"
           />
         </MenuItem>
         <MenuItem onClick={() => handleExportTranscripts('json')} disabled={isExporting}>
-          <ListItemText 
-            primary="JSON (.json)" 
-            secondary="Machine-readable format" 
+          <ListItemText
+            primary="JSON (.json)"
+            secondary="Machine-readable format"
           />
         </MenuItem>
         <MenuItem onClick={() => handleExportTranscripts('pdf')} disabled={isExporting}>
-          <ListItemText 
-            primary="PDF Document (.pdf)" 
-            secondary="Professional document format" 
+          <ListItemText
+            primary="PDF Document (.pdf)"
+            secondary="Professional document format"
           />
           {isExporting && <CircularProgress size={20} sx={{ ml: 1 }} />}
         </MenuItem>

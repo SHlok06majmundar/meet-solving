@@ -1,7 +1,8 @@
 import { IconButton, Tooltip } from '@mui/material';
+
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
-import { useAppTheme } from '../theme/AppThemeProvider';
+import { useAppTheme } from '../theme/themeContext';
 
 export default function ThemeToggle({ sx = {} }) {
   const { mode, toggleMode } = useAppTheme();
@@ -11,15 +12,17 @@ export default function ThemeToggle({ sx = {} }) {
     <Tooltip title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
       <IconButton
         onClick={toggleMode}
-        aria-label="Toggle light and dark mode"
+        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        aria-pressed={isDark}
         sx={{
-          width: 40,
-          height: 40,
+          width: 44,
+          height: 44,
+          flexShrink: 0,
           borderRadius: '12px',
           border: '1px solid var(--border-color)',
           backgroundColor: 'var(--surface-elevated)',
           color: 'var(--text-primary)',
-          boxShadow: 'var(--shadow-soft)',
+          boxShadow: 'none',
           transition: 'all 0.2s ease',
           '&:hover': {
             transform: 'translateY(-1px)',

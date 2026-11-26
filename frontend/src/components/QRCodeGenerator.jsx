@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 
 const QRCodeGenerator = ({ url, size = 200 }) => {
   const canvasRef = useRef(null);
-  
+
   useEffect(() => {
     if (canvasRef.current && url) {
       QRCode.toCanvas(canvasRef.current, url, {
