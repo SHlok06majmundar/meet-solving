@@ -23,6 +23,8 @@ export default defineConfig({
           }
         : {}),
       args: [
+        // Local peer tests must not depend on mDNS multicast on CI runners.
+        "--disable-features=WebRtcHideLocalIpsWithMdns",
         "--use-fake-ui-for-media-stream",
         "--use-fake-device-for-media-stream",
         "--autoplay-policy=no-user-gesture-required",

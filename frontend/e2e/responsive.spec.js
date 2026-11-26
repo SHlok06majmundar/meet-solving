@@ -171,8 +171,12 @@ test("meeting controls remain visible, media preferences are honored, and panels
     ]) {
       const button = page.getByRole("button", { name: label, exact: true });
       await inside(page, button);
+      // Chromium can acknowledge a resize before dvh layout has settled.
+      await expect.poll(async () => {
+        const bounds = await button.boundingBox();
+        return bounds.y + bounds.height;
+      }).toBeLessThanOrEqual(size.height + 1);
       const bounds = await button.boundingBox();
-      expect(bounds.y + bounds.height).toBeLessThanOrEqual(size.height + 1);
       expect(bounds.width).toBeGreaterThanOrEqual(44);
     }
     await noOverflow(page);
